@@ -7,6 +7,7 @@ name = "pypi"
 aiohttp = "~=3.7"
 fastapi = "~=0.63"
 jinja2 = "~=2.11"
+uvicorn = "*"
 
 [dev-packages]
 coverage = "~=5.0"
@@ -25,5 +26,6 @@ pre-commit = "~=2.1"
 python_version = "3.8"
 
 [scripts]
+start = "uvicorn april.april:app"
 lint = "pre-commit run --all-files"
 precommit = "pre-commit install"
