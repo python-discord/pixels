@@ -13,12 +13,12 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./logs:/april/logs
-      - .:/april:ro
+      - ./logs:/app/logs
+      - .:/app:ro
     tty: true
     depends_on:
       - postgres
     env_file:
       - .env
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8000:80"

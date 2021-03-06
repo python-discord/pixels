@@ -1,16 +1,15 @@
-FROM python:3.9-slim
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.8
 
 # Set pip to have cleaner logs and no saved cache
 ENV PIP_NO_CACHE_DIR=false \
     PIPENV_HIDE_EMOJIS=1 \
     PIPENV_IGNORE_VIRTUALENVS=1 \
-    PIPENV_NOSPIN=1
+    PIPENV_NOSPIN=1 \
+    MODULE_NAME="april" \
+    MAX_WORKERS=10
 
 # Install pipenv
 RUN pip install -U pipenv
-
-# Create the working directory
-WORKDIR /april
 
 # Install project dependencies
 COPY Pipfile* ./
@@ -23,6 +22,4 @@ ARG git_sha="development"
 ENV GIT_SHA=$git_sha
 
 # Copy the source code in last to optimize rebuilding the image
-COPY . .
-
-CMD ["uvicorn", "april.april:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY ./april /app

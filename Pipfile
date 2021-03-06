@@ -4,10 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-aiohttp = "~=3.7"
-fastapi = "~=0.63"
-jinja2 = "~=2.11"
-uvicorn = "*"
+asyncpg = "~=0.22"
 
 [dev-packages]
 coverage = "~=5.0"
