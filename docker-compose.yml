@@ -1,0 +1,22 @@
+version: "3.7"
+
+services:
+  postgres:
+    image: postgres:12-alpine
+    environment:
+      POSTGRES_DB: pyapril
+      POSTGRES_PASSWORD: pyapril
+      POSTGRES_USER: pyapril
+
+  april:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./logs:/april/logs
+      - .:/april:ro
+    tty: true
+    depends_on:
+      - postgres
+    env_file:
+      - .env

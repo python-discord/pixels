@@ -1,0 +1,16 @@
+.venv
+scripts
+htmlcov
+__pycache__
+.vagrant
+.pytest_cache
+.github
+.gitlab
+.cache
+Vagrantfile
+.coverage
+.coveragerc
+.gitignore
+.travis.yml
+*.log
+docker
