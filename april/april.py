@@ -11,15 +11,27 @@ app = FastAPI()
 
 
 class Pixel(BaseModel):
-    """
-    A pixel as used by the api.
-
-    missing Bounds checking
-    """
+    """A pixel as used by the api."""
 
     x: int
     y: int
     rgb: str
+
+    @validator("x")
+    def x_must_be_lt_width(cls, x: int) -> int:
+        """Ensure that x is within the bounds of the image."""
+        if 0 <= x < constants.width:
+            return x
+        else:
+            raise ValueError(f"x must be inside range(0, {constants.width})")
+
+    @validator("y")
+    def y_must_be_lt_height(cls, y: int) -> int:
+        """Ensure that y is within the bounds of the image."""
+        if 0 <= y < constants.height:
+            return y
+        else:
+            raise ValueError(f"y must be inside range(0, {constants.height})")
 
     @validator("rgb")
     def rgb_must_be_valid_hex(cls, rgb: str) -> str:
