@@ -4,6 +4,7 @@ import asyncpg
 from fastapi import FastAPI, Request, Response
 from pydantic import BaseModel, validator
 
+from april import canvas
 from april import constants
 
 app = FastAPI()
@@ -43,6 +44,8 @@ class Pixel(BaseModel):
 async def startup() -> None:
     """Create a asyncpg connection pool on startup."""
     app.state.db_pool = await asyncpg.create_pool(constants.uri)
+    async with app.state.db_pool.acquire() as connection:
+        await canvas.reload_cache(connection)
 
 
 @app.middleware("http")
@@ -62,14 +65,9 @@ async def index(request: Request) -> dict:
 
 
 @app.get("/get_pixels")
-async def get_pixels(request: Request) -> list:
+async def get_pixels(request: Request) -> Response:
     """Get the current state of all pixels from the db."""
-    return await request.state.db_conn.fetch(
-        """
-    SELECT *
-    FROM current_pixel
-    """
-    )
+    return Response(bytes(canvas.cache), media_type="application/octet-stream")
 
 
 @app.post("/set_pixel")
@@ -92,4 +90,5 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
             pixel.y,
             pixel.rgb,
         )
-    return dict(message=f'added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}')
+    canvas.update_cache(**pixel.dict())
+    return dict(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
