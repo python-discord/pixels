@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 asyncpg = "~=0.22"
+uvicorn = "~=0.13.4"
+fastapi = "~=0.63.0"
 
 [dev-packages]
 coverage = "~=5.0"
