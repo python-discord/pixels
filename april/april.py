@@ -20,7 +20,6 @@ class Pixel(BaseModel):
     y: int
     rgb: str
 
-    @classmethod
     @validator("rgb")
     def rgb_must_be_valid_hex(cls, rgb: str) -> str:
         """Ensure rgb is a 6 characters long hexadecimal string."""
