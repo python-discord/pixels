@@ -11,9 +11,7 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup() -> None:
     """Create a asyncpg connection pool on startup."""
-    app.state.db_pool = await asyncpg.create_pool(
-        constants.uri
-    )
+    app.state.db_pool = await asyncpg.create_pool(constants.uri)
 
 
 @app.middleware("http")
@@ -35,7 +33,9 @@ async def index(request: Request) -> Response:
 @app.get("/get_pixels")
 async def get_pixels(request: Request) -> Response:
     """Get the current state of all pixels from the db."""
-    return await request.state.db_conn.fetch("""
+    return await request.state.db_conn.fetch(
+        """
     SELECT *
     FROM current_pixel
-    """)
+    """
+    )
