@@ -20,13 +20,14 @@ CREATE TABLE IF NOT EXISTS  public.pixel_history (
 ALTER TABLE public.pixel_history ADD CONSTRAINT pixel_history_fk FOREIGN KEY (user_id) REFERENCES users(user_id);
 
 CREATE OR REPLACE VIEW public.current_pixel
-AS SELECT ph.x,
-    ph.y,
-    ph.pixel_history_id,
-    ph.rgb
-   FROM ( SELECT pixel_history.pixel_history_id,
-            max(pixel_history.created_at) AS created_at
-           FROM pixel_history
-          WHERE NOT pixel_history.deleted
-          GROUP BY pixel_history.x, pixel_history.y, pixel_history.pixel_history_id, pixel_history.created_at) most_recent_pixels
-     JOIN pixel_history ph USING (pixel_history_id, created_at);
+AS SELECT PH.x,
+          PH.y,
+          PH.pixel_history_id,
+          PH.rgb
+FROM (
+    SELECT MAX(pixel_history_id) as pixel_history_id
+    FROM pixel_history
+    WHERE NOT deleted
+    GROUP BY x, y
+) most_recent_pixels
+INNER JOIN pixel_history PH USING (pixel_history_id)
