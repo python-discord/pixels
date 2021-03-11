@@ -8,8 +8,6 @@ cache: t.Optional[bytearray] = None
 
 
 def _empty_cache() -> None:
-    global cache
-    cache = bytearray(c.width * c.height * 3)
     for i, _ in enumerate(cache):
         # ensure the default background is white
         cache[i] = 255
