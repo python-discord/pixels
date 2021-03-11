@@ -4,7 +4,7 @@ from asyncpg import Connection
 
 from april import constants as c
 
-cache: t.Optional[bytearray] = None
+cache: bytearray = bytearray(c.width * c.height * 3)
 
 
 def _empty_cache() -> None:
