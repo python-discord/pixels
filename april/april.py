@@ -1,3 +1,4 @@
+import re
 import typing as t
 
 import asyncpg
@@ -8,6 +9,8 @@ from april import canvas
 from april import constants
 
 app = FastAPI()
+
+_RGB_RE = re.compile(r"[0-9a-f-A-F]{6}")
 
 
 class Pixel(BaseModel):
@@ -36,20 +39,14 @@ class Pixel(BaseModel):
     @validator("rgb")
     def rgb_must_be_valid_hex(cls, rgb: str) -> str:
         """Ensure rgb is a 6 characters long hexadecimal string."""
-        error_msg = (
-            f"{rgb!r} is not a valid color, "
-            "please use the hexadecimal format RRGGBB, "
-            "for example FF00ff for puprle"
-        )
-        try:
-            int(rgb, 16)
-        except ValueError:
-            raise ValueError(error_msg)
+        if _RGB_RE.fullmatch(rgb):
+            return rgb
         else:
-            if len(rgb) == 6:
-                return rgb.upper()
-            else:
-                raise ValueError(error_msg)
+            raise ValueError(
+                f"{rgb!r} is not a valid color, "
+                "please use the hexadecimal format RRGGBB, "
+                "for example FF00ff for purple."
+            )
 
 
 @app.on_event("startup")
