@@ -3,12 +3,14 @@ version: "3.7"
 services:
   postgres:
     image: postgres:12-alpine
+    command: postgres -c 'max_connections=200'
     environment:
       POSTGRES_DB: pyapril
       POSTGRES_PASSWORD: pyapril
       POSTGRES_USER: pyapril
     volumes:
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres:/scripts
     ports:
       - "127.0.0.1:5000:5432"
 
