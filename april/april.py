@@ -52,7 +52,7 @@ class Pixel(BaseModel):
 @app.on_event("startup")
 async def startup() -> None:
     """Create a asyncpg connection pool on startup."""
-    app.state.db_pool = await asyncpg.create_pool(constants.uri)
+    app.state.db_pool = await asyncpg.create_pool(constants.uri, max_size=constants.pool_size)
     async with app.state.db_pool.acquire() as connection:
         await canvas.reload_cache(connection)
 
