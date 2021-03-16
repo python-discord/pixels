@@ -1,4 +1,7 @@
-insert into public.users values (-1, 'secret_key', 't', 'f');
+INSERT INTO public.users
+SELECT user.id, 'secret_key', 't', 'f'
+FROM generate_series(1, 100) as user(id)
+ON CONFLICT DO NOTHING;
 
 ALTER TABLE public.pixel_history DROP CONSTRAINT pixel_history_fk;
 
