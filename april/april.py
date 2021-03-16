@@ -3,6 +3,7 @@ import typing as t
 
 import asyncpg
 from fastapi import FastAPI, Request, Response
+from httpx import AsyncClient
 from pydantic import BaseModel, validator
 from starlette.responses import RedirectResponse
 
@@ -86,6 +87,18 @@ async def get_token() -> Response:
     return RedirectResponse(url=constants.auth_uri)
 
 
+def build_oauth_token_request(code: str) -> dict:
+    """Given a code, return a dict of query params needed to complete the oath flow."""
+    return dict(
+        client_id=constants.client_id,
+        client_secret=constants.client_secret,
+        grant_type='authorization_code',
+        code=code,
+        redirect_uri=constants.redirect_uri,
+        scope='identify',
+    )
+
+
 @app.get('/swap_code')
 async def swap_code(request: Request) -> dict:
     """
@@ -94,8 +107,14 @@ async def swap_code(request: Request) -> dict:
     This endpoint is only used as a redirect target from discord.
     Perhaps hide it from the docs.
     """
-    print(repr(request))
-    return {'did': 'a thing'}
+    code = request.query_params['code']
+    async with AsyncClient() as client:
+        post_params = build_oauth_token_request(code)
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        r = await client.post(constants.token_url, data=post_params, headers=headers)
+    return r.json()
 
 
 @app.post("/set_pixel")
