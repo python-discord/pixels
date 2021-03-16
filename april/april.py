@@ -4,6 +4,7 @@ import typing as t
 import asyncpg
 from fastapi import FastAPI, Request, Response
 from pydantic import BaseModel, validator
+from starlette.responses import RedirectResponse
 
 from april import canvas
 from april import constants
@@ -77,6 +78,24 @@ async def index(request: Request) -> dict:
 async def get_pixels(request: Request) -> Response:
     """Get the current state of all pixels from the db."""
     return Response(bytes(canvas.cache), media_type="application/octet-stream")
+
+
+@app.get('/get_token')
+async def get_token() -> Response:
+    """Redirect the user to discord authorization, the flow continues in swap_code."""
+    return RedirectResponse(url=constants.auth_uri)
+
+
+@app.get('/swap_code')
+async def swap_code(request: Request) -> dict:
+    """
+    Create the user given the authorization code.
+
+    This endpoint is only used as a redirect target from discord.
+    Perhaps hide it from the docs.
+    """
+    print(repr(request))
+    return {'did': 'a thing'}
 
 
 @app.post("/set_pixel")

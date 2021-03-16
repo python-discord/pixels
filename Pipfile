@@ -7,6 +7,8 @@ name = "pypi"
 asyncpg = "~=0.22"
 uvicorn = "~=0.13.4"
 fastapi = "~=0.63.0"
+python-decouple = "*"
+httpx = "*"
 
 [dev-packages]
 coverage = "~=5.0"
