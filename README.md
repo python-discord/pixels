@@ -9,3 +9,14 @@ https://www.notion.so/pythondiscord/2021-April-Experiment-db5b5eb529ff47e096026a
 
 ## .env file
 See this [document](https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker#environment-variables) for uvicorn/fastAPI image env vars
+
+additionally, the project uses these environment variables
+```ini
+DATABASE_URL=prostgres://<username>:<password>@<db server ip>:<db sever port>/<db name>
+CLIENT_ID=<discord app client ID>
+CLIENT_SECRET=<discord app client secret
+AUTH_URI=<authorization url copied from discord, only scope needed is identify>
+REDIRECT_URI=<redirect_uri specified in the discord app>
+# 32 byte = 64 digit hex string
+JWT_SECRET=c78f1d852e2d5adefc2bc54ed256c5b0c031df81aef21a1ae1720e7f72c2d396
+```
