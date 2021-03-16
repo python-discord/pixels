@@ -14,10 +14,10 @@ with open("postgres/test_data.csv", "w", newline="") as f:
     for _ in range(NUMBER_OF_ROWS):
         file_writer.writerow(
             {
-                "x": random.randint(0, WIDTH),
-                "y": random.randint(0, HEIGHT),
+                "x": random.randrange(0, WIDTH),
+                "y": random.randrange(0, HEIGHT),
                 "rgb": "%06x" % random.randint(0, 0xFFFFFF),
-                "user_id": -1,
+                "user_id": random.randint(0, 100),
                 "deleted": False,
             }
         )
