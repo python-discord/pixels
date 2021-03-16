@@ -1,12 +1,14 @@
+import enum
 import re
 import secrets
+import traceback
 import typing as t
 
 import asyncpg
 from asyncpg import Connection
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from httpx import AsyncClient
-from jose import jwt
+from jose import JWTError, jwt
 from pydantic import BaseModel, validator
 from starlette.responses import RedirectResponse
 
@@ -54,6 +56,31 @@ class Pixel(BaseModel):
             )
 
 
+class User(BaseModel):
+    """User represented by their access token."""
+
+    token: str
+
+
+class AuthState(enum.Enum):
+    """Represents possible outcomes of a User attempting to authorize."""
+
+    INVALID_TOKEN = "The token provided is not a valid token, please navigate to /get_token to get a new one."
+    BANNED = "You are banned."
+    NOT_A_MOD = "This endpoint is limited to moderators"
+    SUCCESS = "This token is correct"
+
+    def __bool__(self) -> bool:
+        """Return whether the authorization was successful."""
+        return self == AuthState.SUCCESS
+
+    def raise_if_failed(self) -> None:
+        """Raise an HTTPException if the state isn't success."""
+        if self:
+            return
+        raise HTTPException(status_code=401, detail=self.value)
+
+
 @app.on_event("startup")
 async def startup() -> None:
     """Create a asyncpg connection pool on startup."""
@@ -79,8 +106,9 @@ async def index(request: Request) -> dict:
 
 
 @app.get("/get_pixels")
-async def get_pixels(request: Request) -> Response:
+async def get_pixels(request: Request, user: User) -> Response:
     """Get the current state of all pixels from the db."""
+    (await authorized(request.state.db_conn, user.token)).raise_if_failed()
     return Response(bytes(canvas.cache), media_type="application/octet-stream")
 
 
@@ -114,27 +142,57 @@ async def swap_code(request: Request) -> Response:
     Create the user given the authorization code.
 
     This endpoint is only used as a redirect target from discord.
-    Perhaps hide it from the docs.
     """
     code = request.query_params["code"]
-    async with AsyncClient() as client:
-        token_params, token_headers = build_oauth_token_request(code)
-        token = (
-            await client.post(
-                constants.token_url, data=token_params, headers=token_headers
-            )
-        ).json()
-        auth_header = {"Authorization": f"Bearer {token['access_token']}"}
-        user = (await client.get(constants.user_url, headers=auth_header)).json()
-        token = await reset_user_token(request.state.db_conn, user["id"])
+    try:
+        async with AsyncClient() as client:
+            token_params, token_headers = build_oauth_token_request(code)
+            token = (await client.post(constants.token_url, data=token_params, headers=token_headers)).json()
+            auth_header = {"Authorization": f"Bearer {token['access_token']}"}
+            user = (await client.get(constants.user_url, headers=auth_header)).json()
+            token = await reset_user_token(request.state.db_conn, user["id"])
+    except KeyError:
+        # ensure that users don't land on the show_pixel page,
+        traceback.format_exc()
+        return RedirectResponse("/error_token")
+    except PermissionError:
+        return RedirectResponse("/error_token?error=You are banned")
 
     return RedirectResponse("/show_token?token=" + token)
+
+
+@app.get("/error_token", include_in_schema=False)
+async def error_token(request: Request) -> Response:
+    """Report an error when generating a token."""
+    raise HTTPException(401, request.get("error", "Unknown error while creating token"))
 
 
 @app.get("/show_token", include_in_schema=False)
 async def show_token(request: Request) -> str:
     """Take a token from URL and show it."""
     return request.query_params["token"]
+
+
+async def authorized(conn: Connection, token: str, *, require_mod: bool = False) -> AuthState:
+    """Attempt to authorize the user given a token and a database connection."""
+    try:
+        token_data = jwt.decode(token, constants.jwt_secret)
+    except JWTError:
+        return AuthState.INVALID_TOKEN
+    else:
+        user_id = token_data["id"]
+        token_salt = token_data["salt"]
+        user_state = await conn.fetchrow(
+            "SELECT is_banned, is_mod FROM users WHERE user_id = $1 AND key_salt = $2;", int(user_id), token_salt,
+        )
+        if user_state is None:
+            return AuthState.INVALID_TOKEN
+        elif require_mod and not user_state["is_mod"]:
+            return AuthState.NOT_A_MOD
+        elif user_state["is_banned"]:
+            return AuthState.BANNED
+        else:
+            return AuthState.SUCCESS
 
 
 async def reset_user_token(conn: Connection, user_id: str) -> str:
@@ -144,11 +202,9 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
     If the user already exists, their token is regenerated and the old is invalidated.
     """
     # returns None if the user doesn't exist and false if they aren't banned
-    is_banned = await conn.fetchval(
-        "SELECT is_banned FROM users WHERE user_id = $1", int(user_id)
-    )
+    is_banned = await conn.fetchval("SELECT is_banned FROM users WHERE user_id = $1", int(user_id))
     if is_banned:
-        return "You are banned"
+        raise PermissionError
     # 22 long string
     token_salt = secrets.token_urlsafe(16)
     async with conn.transaction():
@@ -163,7 +219,7 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 
 
 @app.post("/set_pixel")
-async def set_pixel(request: Request, pixel: Pixel) -> dict:
+async def set_pixel(request: Request, pixel: Pixel, user: User) -> dict:
     """
     Create a new pixel at the specified position with the specified color.
 
@@ -173,6 +229,7 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
     missing auth, uses a test user at id -1, you will need to create a test user in the users table
     """
     conn = request.state.db_conn
+    (await authorized(conn, user.token)).raise_if_failed()
     async with conn.transaction():
         await conn.execute(
             """
