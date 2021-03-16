@@ -87,9 +87,9 @@ async def get_token() -> Response:
     return RedirectResponse(url=constants.auth_uri)
 
 
-def build_oauth_token_request(code: str) -> dict:
+def build_oauth_token_request(code: str) -> t.Tuple[dict, dict]:
     """Given a code, return a dict of query params needed to complete the oath flow."""
-    return dict(
+    query = dict(
         client_id=constants.client_id,
         client_secret=constants.client_secret,
         grant_type='authorization_code',
@@ -97,6 +97,10 @@ def build_oauth_token_request(code: str) -> dict:
         redirect_uri=constants.redirect_uri,
         scope='identify',
     )
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    return query, headers
 
 
 @app.get('/swap_code')
@@ -109,12 +113,18 @@ async def swap_code(request: Request) -> dict:
     """
     code = request.query_params['code']
     async with AsyncClient() as client:
-        post_params = build_oauth_token_request(code)
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
+        token_params, token_headers = build_oauth_token_request(code)
+        token = (await client.post(
+            constants.token_url,
+            data=token_params,
+            headers=token_headers
+        )).json()
+        auth_header = {
+            'Authorization': f"Bearer {token['access_token']}"
         }
-        r = await client.post(constants.token_url, data=post_params, headers=headers)
-    return r.json()
+        user = (await client.get(constants.user_url, headers=auth_header)).json()
+
+    return user
 
 
 @app.post("/set_pixel")
