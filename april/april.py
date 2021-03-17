@@ -55,30 +55,41 @@ class Pixel(BaseModel):
                 "for example FF00ff for purple."
             )
 
+    class Config:
+        """Additional settings for this model."""
 
-class User(BaseModel):
-    """User represented by their access token."""
-
-    token: str
+        schema_extra = {"example": {"x": constants.width // 2, "y": constants.height // 2, "rgb": "00FF00"}}
 
 
 class AuthState(enum.Enum):
-    """Represents possible outcomes of a User attempting to authorize."""
+    """Represents possible outcomes of a user attempting to authorize."""
 
-    INVALID_TOKEN = "The token provided is not a valid token, please navigate to /get_token to get a new one."
+    NO_TOKEN = (
+        "There is no token provided, provide one in an Authorization header (case insensitive), "
+        "or navigate to /get_token to get a one"
+    )
+    INVALID_TOKEN = "The token provided is not a valid token, navigate to /get_token to get a new one."
     BANNED = "You are banned."
-    NOT_A_MOD = "This endpoint is limited to moderators"
-    SUCCESS = "This token is correct"
+    MODERATOR = "This token belongs to a moderator"
+    USER = "This token belongs to a regular user"
 
     def __bool__(self) -> bool:
         """Return whether the authorization was successful."""
-        return self == AuthState.SUCCESS
+        return self == AuthState.USER or self == AuthState.MODERATOR
 
     def raise_if_failed(self) -> None:
-        """Raise an HTTPException if the state isn't success."""
+        """Raise an HTTPException if a user isn't authorized."""
         if self:
             return
         raise HTTPException(status_code=401, detail=self.value)
+
+    def raise_unless_mod(self) -> None:
+        """Raise an HTTPException if a moderator isn't authorized."""
+        if self == AuthState.MODERATOR:
+            return
+        elif self == AuthState.USER:
+            raise HTTPException(status_code=401, detail="This endpoint is limited to moderators")
+        self.raise_if_failed()
 
 
 @app.on_event("startup")
@@ -90,36 +101,14 @@ async def startup() -> None:
 
 
 @app.middleware("http")
-async def get_connection_from_pool(request: Request, callnext: t.Callable) -> Response:
+async def setup_data(request: Request, callnext: t.Callable) -> Response:
     """Get a connection from the pool for this request."""
     async with app.state.db_pool.acquire() as connection:
         request.state.db_conn = connection
+        request.state.auth = await authorized(connection, request.headers.get("Authorization"))
         response = await callnext(request)
     request.state.db_conn = None
     return response
-
-
-@app.get("/")
-async def index(request: Request) -> dict:
-    """Basic hello world endpoint."""
-    return {"Message": "Hello!"}
-
-
-@app.get("/get_pixels")
-async def get_pixels(request: Request, user: User) -> Response:
-    """Get the current state of all pixels from the db."""
-    (await authorized(request.state.db_conn, user.token)).raise_if_failed()
-    return Response(bytes(canvas.cache), media_type="application/octet-stream")
-
-
-@app.get("/get_token")
-async def get_token() -> Response:
-    """
-    Redirect the user to discord authorization, the flow continues in swap_code.
-
-    Unlike other endpoints, you should open this one in the browser, since it redirects to a discord website.
-    """
-    return RedirectResponse(url=constants.auth_uri)
 
 
 def build_oauth_token_request(code: str) -> t.Tuple[dict, dict]:
@@ -173,8 +162,10 @@ async def show_token(request: Request) -> str:
     return request.query_params["token"]
 
 
-async def authorized(conn: Connection, token: str, *, require_mod: bool = False) -> AuthState:
+async def authorized(conn: Connection, token: t.Optional[str]) -> AuthState:
     """Attempt to authorize the user given a token and a database connection."""
+    if token is None:
+        return AuthState.NO_TOKEN
     try:
         token_data = jwt.decode(token, constants.jwt_secret)
     except JWTError:
@@ -187,12 +178,12 @@ async def authorized(conn: Connection, token: str, *, require_mod: bool = False)
         )
         if user_state is None:
             return AuthState.INVALID_TOKEN
-        elif require_mod and not user_state["is_mod"]:
-            return AuthState.NOT_A_MOD
         elif user_state["is_banned"]:
             return AuthState.BANNED
+        elif user_state["is_mod"]:
+            return AuthState.MODERATOR
         else:
-            return AuthState.SUCCESS
+            return AuthState.USER
 
 
 async def reset_user_token(conn: Connection, user_id: str) -> str:
@@ -218,18 +209,49 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
     return jwt.encode(jwt_data, constants.jwt_secret, algorithm="HS256")
 
 
+# ENDPOINTS
+
+
+@app.get("/")
+async def index(request: Request) -> dict:
+    """Basic hello world endpoint."""
+    return {"Message": "Hello!"}
+
+
+@app.get("/get_token")
+async def get_token() -> Response:
+    """
+    Redirect the user to discord authorization, the flow continues in swap_code.
+
+    Unlike other endpoints, you should open this one in the browser, since it redirects to a discord website.
+    """
+    return RedirectResponse(url=constants.auth_uri)
+
+
+@app.get("/get_pixels")
+async def get_pixels(request: Request) -> Response:
+    """
+    Get the current state of all pixels from the db.
+
+    Requires a valid token in an Authorization header.
+    """
+    request.state.auth.raise_if_failed()
+    return Response(bytes(canvas.cache), media_type="application/octet-stream")
+
+
 @app.post("/set_pixel")
-async def set_pixel(request: Request, pixel: Pixel, user: User) -> dict:
+async def set_pixel(request: Request, pixel: Pixel) -> dict:
     """
     Create a new pixel at the specified position with the specified color.
 
     Override any pixel already at the same position.
 
+    Requires a valid token in an Authorization header.
+
     missing Ratelimit
-    missing auth, uses a test user at id -1, you will need to create a test user in the users table
     """
+    request.state.auth.raise_if_failed()
     conn = request.state.db_conn
-    (await authorized(conn, user.token)).raise_if_failed()
     async with conn.transaction():
         await conn.execute(
             """
