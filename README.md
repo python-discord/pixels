@@ -18,5 +18,6 @@ CLIENT_SECRET=<discord app client secret
 AUTH_URI=<authorization url copied from discord, only scope needed is identify>
 BASE_URL=<base url for this app>
 # 32 byte = 64 digit hex string
-JWT_SECRET=c78f1d852e2d5adefc2bc54ed256c5b0c031df81aef21a1ae1720e7f72c2d396
+JWT_SECRET=c78f1d852e2d5adefc2bc54ed256c5b0c031df81aef21a1ae1720e7f72c2d39
+API_TOKEN=<An api token issued by the project, used by the test script>
 ```
