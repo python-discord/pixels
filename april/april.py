@@ -71,8 +71,8 @@ class AuthState(enum.Enum):
     """Represents possible outcomes of a user attempting to authorize."""
 
     NO_TOKEN = (
-        "There is no token provided, provide one in an Authorization header (case insensitive), "
-        "or navigate to /authorize to get a one"
+        "There is no token provided, provide one in an Authorization header in the format 'Bearer {your token here}'"
+        "or navigate to /authorize to get one"
     )
     BAD_HEADER = "The Authorization header does not specify the Bearer scheme."
     INVALID_TOKEN = "The token provided is not a valid token, navigate to /authorize to get a new one."
