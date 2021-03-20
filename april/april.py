@@ -159,10 +159,10 @@ async def auth_callback(request: Request) -> Response:
 
 async def authorized(conn: Connection, authorization: t.Optional[str]) -> AuthState:
     """Attempt to authorize the user given a token and a database connection."""
-    scheme, token = get_authorization_scheme_param(authorization)
-    if token is None:
+    if authorization is None:
         return AuthState.NO_TOKEN
-    elif scheme.lower() != "bearer":
+    scheme, token = get_authorization_scheme_param(authorization)
+    if scheme.lower() != "bearer":
         return AuthState.BAD_HEADER
     try:
         token_data = jwt.decode(token, constants.jwt_secret)
