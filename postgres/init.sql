@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS public.users (
 	user_id int8 NOT NULL,
-	api_key text NOT NULL,
+	key_salt text NOT NULL,
 	is_mod bool NOT NULL DEFAULT false,
 	is_banned bool NOT NULL DEFAULT false,
 	CONSTRAINT users_pk PRIMARY KEY (user_id)
