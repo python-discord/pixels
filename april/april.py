@@ -171,7 +171,7 @@ async def auth_callback(request: Request) -> Response:
 
 
 @app.get("/show_token", include_in_schema=False)
-async def show_token(request: Request, token: str = Cookie(None)) -> str:  # noqa: B008
+async def show_token(request: Request, token: str = Cookie(None)) -> Response:  # noqa: B008
     """Take a token from URL and show it."""
     token = auth_s.loads(token)
     return templates.TemplateResponse("api_token.html", {"request": request, "token": token})
