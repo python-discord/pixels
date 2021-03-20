@@ -81,14 +81,12 @@
       font-family: monospace;
     }
   </style>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
   <script type="text/javascript">
     function copyToClipboard(element) {
-        var $temp = $("<input>");
-        $("body").append($temp);
-        $temp.val($(element).text()).select();
+        var copyText = document.getElementById(element);
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); /* For mobile devices */
         document.execCommand("copy");
-        $temp.remove();
     }
   </script>
 </head>
@@ -103,7 +101,7 @@
     <div class="content-box">
       <h2>Your API token:</h2>
       <input type="text" class="api_token" id="token" value="{{  token  }}" readonly>
-      <button onclick="copyToClipboard('#token')">Copy token</button>
+      <button onclick="copyToClipboard('token')">Copy token</button>
     </div>
   </div>
 </body>
