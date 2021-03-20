@@ -72,10 +72,10 @@ class AuthState(enum.Enum):
 
     NO_TOKEN = (
         "There is no token provided, provide one in an Authorization header (case insensitive), "
-        "or navigate to /get_token to get a one"
+        "or navigate to /authorize to get a one"
     )
     BAD_HEADER = "The Authorization header does not specify the Bearer scheme."
-    INVALID_TOKEN = "The token provided is not a valid token, navigate to /auth to get a new one."
+    INVALID_TOKEN = "The token provided is not a valid token, navigate to /authorize to get a new one."
     BANNED = "You are banned."
     MODERATOR = "This token belongs to a moderator"
     USER = "This token belongs to a regular user"
