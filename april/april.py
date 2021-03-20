@@ -1,4 +1,5 @@
 import enum
+import logging
 import re
 import secrets
 import traceback
@@ -7,6 +8,7 @@ import typing as t
 import asyncpg
 from asyncpg import Connection
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
 from jose import JWTError, jwt
 from pydantic import BaseModel, validator
@@ -15,7 +17,10 @@ from starlette.responses import RedirectResponse
 from april import canvas
 from april import constants
 
+log = logging.getLogger(__name__)
+
 app = FastAPI()
+templates = Jinja2Templates(directory="april/templates")
 
 _RGB_RE = re.compile(r"[0-9a-f-A-F]{6}")
 
@@ -118,17 +123,17 @@ def build_oauth_token_request(code: str) -> t.Tuple[dict, dict]:
         client_secret=constants.client_secret,
         grant_type="authorization_code",
         code=code,
-        redirect_uri=constants.redirect_uri,
+        redirect_uri=f"{constants.base_url}/callback",
         scope="identify",
     )
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     return query, headers
 
 
-@app.get("/swap_code", include_in_schema=False)
-async def swap_code(request: Request) -> Response:
+@app.get("/callback", include_in_schema=False)
+async def auth_callback(request: Request) -> Response:
     """
-    Create the user given the authorization code.
+    Create the user given the authorization code and output the token.
 
     This endpoint is only used as a redirect target from discord.
     """
@@ -142,24 +147,12 @@ async def swap_code(request: Request) -> Response:
             token = await reset_user_token(request.state.db_conn, user["id"])
     except KeyError:
         # ensure that users don't land on the show_pixel page,
-        traceback.format_exc()
-        return RedirectResponse("/error_token")
+        log.error(traceback.format_exc())
+        raise HTTPException(401, "Unknown error while creating token")
     except PermissionError:
-        return RedirectResponse("/error_token?error=You are banned")
+        raise HTTPException(401, "You are banned")
 
-    return RedirectResponse("/show_token?token=" + token)
-
-
-@app.get("/error_token", include_in_schema=False)
-async def error_token(request: Request) -> Response:
-    """Report an error when generating a token."""
-    raise HTTPException(401, request.get("error", "Unknown error while creating token"))
-
-
-@app.get("/show_token", include_in_schema=False)
-async def show_token(request: Request) -> str:
-    """Take a token from URL and show it."""
-    return request.query_params["token"]
+    return templates.TemplateResponse("api_token.html", {"request": request, "token": token})
 
 
 async def authorized(conn: Connection, token: t.Optional[str]) -> AuthState:
@@ -218,10 +211,10 @@ async def index(request: Request) -> dict:
     return {"Message": "Hello!"}
 
 
-@app.get("/get_token")
-async def get_token() -> Response:
+@app.get("/authorize")
+async def authorize() -> Response:
     """
-    Redirect the user to discord authorization, the flow continues in swap_code.
+    Redirect the user to discord authorization, the flow continues in /callback.
 
     Unlike other endpoints, you should open this one in the browser, since it redirects to a discord website.
     """

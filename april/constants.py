@@ -9,7 +9,7 @@ client_secret = config("CLIENT_SECRET")
 jwt_secret = config("JWT_SECRET")
 # starlette already quotes urls, so the url copied from discord ends up double encoded
 auth_uri = config("AUTH_URI", cast=unquote)
-redirect_uri = config("REDIRECT_URI")
+base_url = config("BASE_URL", default="https://pixel.pythondiscord.com")
 token_url = config("TOKEN_URL", default="https://discord.com/api/oauth2/token")
 user_url = config("TOKEN_URL", default="https://discord.com/api/users/@me")
 

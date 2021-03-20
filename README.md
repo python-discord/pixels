@@ -16,7 +16,7 @@ DATABASE_URL=prostgres://<username>:<password>@<db server ip>:<db sever port>/<d
 CLIENT_ID=<discord app client ID>
 CLIENT_SECRET=<discord app client secret
 AUTH_URI=<authorization url copied from discord, only scope needed is identify>
-REDIRECT_URI=<redirect_uri specified in the discord app>
+BASE_URL=<base url for this app>
 # 32 byte = 64 digit hex string
 JWT_SECRET=c78f1d852e2d5adefc2bc54ed256c5b0c031df81aef21a1ae1720e7f72c2d396
 ```
