@@ -8,6 +8,7 @@ import typing as t
 import asyncpg
 from asyncpg import Connection
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
 from jose import JWTError, jwt
@@ -73,7 +74,8 @@ class AuthState(enum.Enum):
         "There is no token provided, provide one in an Authorization header (case insensitive), "
         "or navigate to /get_token to get a one"
     )
-    INVALID_TOKEN = "The token provided is not a valid token, navigate to /get_token to get a new one."
+    BAD_HEADER = "The Authorization header does not specify the Bearer scheme."
+    INVALID_TOKEN = "The token provided is not a valid token, navigate to /auth to get a new one."
     BANNED = "You are banned."
     MODERATOR = "This token belongs to a moderator"
     USER = "This token belongs to a regular user"
@@ -155,10 +157,13 @@ async def auth_callback(request: Request) -> Response:
     return templates.TemplateResponse("api_token.html", {"request": request, "token": token})
 
 
-async def authorized(conn: Connection, token: t.Optional[str]) -> AuthState:
+async def authorized(conn: Connection, authorization: t.Optional[str]) -> AuthState:
     """Attempt to authorize the user given a token and a database connection."""
+    scheme, token = get_authorization_scheme_param(authorization)
     if token is None:
         return AuthState.NO_TOKEN
+    elif scheme.lower() != "bearer":
+        return AuthState.BAD_HEADER
     try:
         token_data = jwt.decode(token, constants.jwt_secret)
     except JWTError:
@@ -209,6 +214,13 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 async def index(request: Request) -> dict:
     """Basic hello world endpoint."""
     return {"Message": "Hello!"}
+
+
+@app.get("/mod")
+async def mod_check(request: Request) -> dict:
+    """Exmaple of a mod check endpoint."""
+    request.state.auth.raise_unless_mod()
+    return {"Message": "Hello fellow moderator!"}
 
 
 @app.get("/authorize")
