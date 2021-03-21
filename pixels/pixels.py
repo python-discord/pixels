@@ -16,13 +16,13 @@ from jose import JWTError, jwt
 from pydantic import BaseModel, validator
 from starlette.responses import RedirectResponse
 
-from april import canvas
-from april import constants
+from pixels import canvas
+from pixels import constants
 
 log = logging.getLogger(__name__)
 
 app = FastAPI()
-templates = Jinja2Templates(directory="april/templates")
+templates = Jinja2Templates(directory="pixels/templates")
 
 auth_s = URLSafeSerializer(secrets.token_hex(16))
 
