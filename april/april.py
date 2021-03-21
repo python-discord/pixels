@@ -102,6 +102,25 @@ class AuthState(enum.Enum):
         self.raise_if_failed()
 
 
+class AuthResult(t.NamedTuple):
+    """The possible outcomes of authorization with the user id."""
+
+    state: AuthState
+    user_id: t.Optional[int]
+
+    def __bool__(self) -> bool:
+        """Return whether the authorization was successful."""
+        return bool(self.state)
+
+    def raise_if_failed(self) -> None:
+        """Raise an HTTPException if a user isn't authorized."""
+        self.state.raise_if_failed()
+
+    def raise_unless_mod(self) -> None:
+        """Raise an HTTPException if a moderator isn't authorized."""
+        self.state.raise_unless_mod()
+
+
 @app.on_event("startup")
 async def startup() -> None:
     """Create a asyncpg connection pool on startup."""
@@ -177,17 +196,17 @@ async def show_token(request: Request, token: str = Cookie(None)) -> Response:  
     return templates.TemplateResponse("api_token.html", {"request": request, "token": token})
 
 
-async def authorized(conn: Connection, authorization: t.Optional[str]) -> AuthState:
+async def authorized(conn: Connection, authorization: t.Optional[str]) -> AuthResult:
     """Attempt to authorize the user given a token and a database connection."""
     scheme, token = get_authorization_scheme_param(authorization)
     if token is None:
-        return AuthState.NO_TOKEN
+        return AuthResult(AuthState.NO_TOKEN, None)
     elif scheme.lower() != "bearer":
-        return AuthState.BAD_HEADER
+        return AuthResult(AuthState.BAD_HEADER, None)
     try:
         token_data = jwt.decode(token, constants.jwt_secret)
     except JWTError:
-        return AuthState.INVALID_TOKEN
+        return AuthResult(AuthState.INVALID_TOKEN, None)
     else:
         user_id = token_data["id"]
         token_salt = token_data["salt"]
@@ -195,13 +214,13 @@ async def authorized(conn: Connection, authorization: t.Optional[str]) -> AuthSt
             "SELECT is_banned, is_mod FROM users WHERE user_id = $1 AND key_salt = $2;", int(user_id), token_salt,
         )
         if user_state is None:
-            return AuthState.INVALID_TOKEN
+            return AuthResult(AuthState.INVALID_TOKEN, None)
         elif user_state["is_banned"]:
-            return AuthState.BANNED
+            return AuthResult(AuthState.BANNED, int(user_id))
         elif user_state["is_mod"]:
-            return AuthState.MODERATOR
+            return AuthResult(AuthState.MODERATOR, int(user_id))
         else:
-            return AuthState.USER
+            return AuthResult(AuthState.USER, int(user_id))
 
 
 async def reset_user_token(conn: Connection, user_id: str) -> str:
@@ -280,11 +299,12 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
     async with conn.transaction():
         await conn.execute(
             """
-            INSERT INTO pixel_history (x, y, rgb, user_id, deleted) VALUES ($1, $2, $3, -1, false);
+            INSERT INTO pixel_history (x, y, rgb, user_id, deleted) VALUES ($1, $2, $3, $4, false);
         """,
             pixel.x,
             pixel.y,
             pixel.rgb,
+            request.state.auth.user_id
         )
     canvas.update_cache(**pixel.dict())
     return dict(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
