@@ -7,10 +7,11 @@ import typing as t
 
 import asyncpg
 from asyncpg import Connection
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
+from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
 from pydantic import BaseModel, validator
 from starlette.responses import RedirectResponse
@@ -22,6 +23,8 @@ log = logging.getLogger(__name__)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="april/templates")
+
+auth_s = URLSafeSerializer(secrets.token_hex(16))
 
 _RGB_RE = re.compile(r"[0-9a-f-A-F]{6}")
 
@@ -173,6 +176,23 @@ async def auth_callback(request: Request) -> Response:
     except PermissionError:
         raise HTTPException(401, "You are banned")
 
+    # Redirect so that a user doesn't refresh the page and spam discord
+    token = auth_s.dumps(token)
+    redirect = RedirectResponse("/show_token", status_code=303)
+    redirect.set_cookie(
+        key='token',
+        value=token,
+        httponly=True,
+        max_age=10,
+        path='/show_token',
+    )
+    return redirect
+
+
+@app.get("/show_token", include_in_schema=False)
+async def show_token(request: Request, token: str = Cookie(None)) -> Response:  # noqa: B008
+    """Take a token from URL and show it."""
+    token = auth_s.loads(token)
     return templates.TemplateResponse("api_token.html", {"request": request, "token": token})
 
 
