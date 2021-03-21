@@ -74,11 +74,11 @@ class AuthState(enum.Enum):
     """Represents possible outcomes of a user attempting to authorize."""
 
     NO_TOKEN = (
-        "There is no token provided, provide one in an Authorization header (case insensitive), "
-        "or navigate to /get_token to get a one"
+        "There is no token provided, provide one in an Authorization header in the format 'Bearer {your token here}'"
+        "or navigate to /authorize to get one"
     )
     BAD_HEADER = "The Authorization header does not specify the Bearer scheme."
-    INVALID_TOKEN = "The token provided is not a valid token, navigate to /auth to get a new one."
+    INVALID_TOKEN = "The token provided is not a valid token, navigate to /authorize to get a new one."
     BANNED = "You are banned."
     MODERATOR = "This token belongs to a moderator"
     USER = "This token belongs to a regular user"
@@ -198,10 +198,10 @@ async def show_token(request: Request, token: str = Cookie(None)) -> Response:  
 
 async def authorized(conn: Connection, authorization: t.Optional[str]) -> AuthResult:
     """Attempt to authorize the user given a token and a database connection."""
-    scheme, token = get_authorization_scheme_param(authorization)
-    if token is None:
+    if authorization is None:
         return AuthResult(AuthState.NO_TOKEN, None)
-    elif scheme.lower() != "bearer":
+    scheme, token = get_authorization_scheme_param(authorization)
+    if scheme.lower() != "bearer":
         return AuthResult(AuthState.BAD_HEADER, None)
     try:
         token_data = jwt.decode(token, constants.jwt_secret)
