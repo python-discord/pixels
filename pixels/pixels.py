@@ -26,7 +26,7 @@ templates = Jinja2Templates(directory="pixels/templates")
 
 auth_s = URLSafeSerializer(secrets.token_hex(16))
 
-_RGB_RE = re.compile(r"[0-9a-f-A-F]{6}")
+_RGB_RE = re.compile(r"[0-9a-fA-F]{6}")
 
 
 class Pixel(BaseModel):
