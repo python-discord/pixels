@@ -10,13 +10,20 @@ https://www.notion.so/pythondiscord/2021-April-Experiment-db5b5eb529ff47e096026a
 ## .env file
 See this [document](https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker#environment-variables) for uvicorn/fastAPI image env vars
 
-additionally, the project uses these environment variables
+Additionally, the project uses these environment variables
 ```ini
 DATABASE_URL=prostgres://<username>:<password>@<db server ip>:<db sever port>/<db name>
 CLIENT_ID=<discord app client ID>
-CLIENT_SECRET=<discord app client secret
-AUTH_URI=<authorization url copied from discord, only scope needed is identify>
-BASE_URL=<base url for this app>
+CLIENT_SECRET=<discord app client secret>
+AUTH_URI=<discord OAuth2 URL>
+BASE_URL=<base url for the web server>
 # 32 byte = 64 digit hex string
-JWT_SECRET=c78f1d852e2d5adefc2bc54ed256c5b0c031df81aef21a1ae1720e7f72c2d396
+JWT_SECRET=c78f1d852e2d5adefc2bc54ed256c5b0c031df81aef21a1ae1720e7f72c2d39
+API_TOKEN=<An api token issued by the project, used by the test script>
 ```
+
+To setup your discord application go to https://discord.com/developers/applications/ and create a new application.
+
+Under OAuth2 add the redirect `{BASE_URL}/callback`, we only need the `identify` scope.
+
+Use the generatred URL for the `AUTH_URI` env var.
