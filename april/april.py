@@ -253,7 +253,7 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
     async with conn.transaction():
         await conn.execute(
             """INSERT INTO users (user_id, key_salt, is_mod) VALUES ($1, $2, $3)
-            ON CONFLICT (user_id) DO UPDATE SET key_salt=$2;""",
+            ON CONFLICT (user_id) DO UPDATE SET key_salt=$2, is_mod=$3;""",
             int(user_id),
             token_salt,
             is_mod,
