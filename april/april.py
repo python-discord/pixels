@@ -5,7 +5,6 @@ import secrets
 import traceback
 import typing as t
 
-import asyncpg
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
@@ -16,8 +15,7 @@ from jose import JWTError, jwt
 from pydantic import BaseModel, validator
 from starlette.responses import RedirectResponse
 
-from april import canvas
-from april import constants
+from april import DB_POOL, canvas, constants
 
 log = logging.getLogger(__name__)
 
@@ -124,15 +122,22 @@ class AuthResult(t.NamedTuple):
 @app.on_event("startup")
 async def startup() -> None:
     """Create a asyncpg connection pool on startup."""
-    app.state.db_pool = await asyncpg.create_pool(constants.uri, max_size=constants.pool_size)
-    async with app.state.db_pool.acquire() as connection:
+    # Init DB Connection
+    await DB_POOL
+    async with DB_POOL.acquire() as connection:
         await canvas.reload_cache(connection)
+
+
+@app.on_event("shutdown")
+async def shutdown() -> None:
+    """Close down the app."""
+    await DB_POOL.close()
 
 
 @app.middleware("http")
 async def setup_data(request: Request, callnext: t.Callable) -> Response:
     """Get a connection from the pool for this request."""
-    async with app.state.db_pool.acquire() as connection:
+    async with DB_POOL.acquire() as connection:
         request.state.db_conn = connection
         request.state.auth = await authorized(connection, request.headers.get("Authorization"))
         response = await callnext(request)
