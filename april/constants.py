@@ -16,3 +16,6 @@ user_url = config("TOKEN_URL", default="https://discord.com/api/users/@me")
 width = 160
 height = 90
 pool_size = 20
+
+with open("april/resources/mods.txt") as f:
+    mods = f.read().split()
