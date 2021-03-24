@@ -11,7 +11,7 @@ import asyncpg
 import fastapi
 from fastapi import routing
 
-from april.april import DB_POOL
+from april import constants
 from april.utils import database
 
 log = logging.getLogger(__name__)
@@ -192,7 +192,7 @@ class __BucketBase:
 
     async def record_interaction(self, request_id: int, response_code: int) -> None:
         """Record the current interaction in the database."""
-        async with DB_POOL.acquire() as db_conn:
+        async with constants.DB_POOL.acquire() as db_conn:
             success = str(response_code)[0] != "4"
 
             if success or self.COUNT_FAILED:
@@ -211,7 +211,7 @@ class __BucketBase:
         This allows for a cooldown to take priority over the rate limits, and function properly even if
         cooldown is shorter than the rate limit.
         """
-        async with DB_POOL.acquire() as db_conn:
+        async with constants.DB_POOL.acquire() as db_conn:
             await db_conn.execute(
                 """
                     DELETE FROM rate_limits WHERE (route = $1);
@@ -268,7 +268,7 @@ class User(__BucketBase):
         })
 
     async def _clear_rate_limits(self, request_id: int) -> None:
-        async with DB_POOL.acquire() as db_conn:
+        async with constants.DB_POOL.acquire() as db_conn:
             await db_conn.execute(
                 """
                     DELETE FROM rate_limits WHERE (route = $1 AND user_id = $2);
@@ -300,7 +300,7 @@ class User(__BucketBase):
             return 0
 
     async def _trigger_cooldown(self, request_id: int) -> None:
-        async with DB_POOL.acquire() as db_conn:
+        async with constants.DB_POOL.acquire() as db_conn:
             if not await self._check_cooldown(request_id, db_conn):
                 await db_conn.execute(
                     """
