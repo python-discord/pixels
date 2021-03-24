@@ -20,3 +20,6 @@ pool_size = 20
 
 # Awaited in application startup
 DB_POOL = asyncpg.create_pool(uri, max_size=pool_size)
+
+with open("april/resources/mods.txt") as f:
+    mods = f.read().split()
