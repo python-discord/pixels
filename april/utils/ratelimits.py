@@ -339,7 +339,7 @@ class User(__BucketBase):
 
         if len(response) > 0:
             remaining: datetime.timedelta = response[0].get("expiration") - datetime.datetime.now()
-            return remaining.total_seconds() // 1 if remaining.total_seconds() >= 0 else 0
+            return int(remaining.total_seconds() // 1) if remaining.total_seconds() >= 0 else 0
 
         return -1
 
