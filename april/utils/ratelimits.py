@@ -167,7 +167,6 @@ class __BucketBase:
             tasks.add_task(functools.partial(self.state.pop, request_id))
 
             response.background = tasks
-            print(state)
             return response
 
         return caller
@@ -349,4 +348,70 @@ class ModUser(User):
 
     async def _pre_call(self, request: fastapi.Request, *args, **kwargs) -> None:
         request.state.auth.raise_unless_mod()
-        self.user_id = request.state.auth.user_id
+
+
+class Global(__BucketBase):
+    """A bucket that applies to all users."""
+
+    async def _record_interaction(self, request_id: int, db_conn: asyncpg.Connection) -> None:
+        await db_conn.execute(
+            """
+                INSERT INTO rate_limits (route, expiration) VALUES ($1, $2);
+            """,
+            self.ROUTE, datetime.datetime.now() + datetime.timedelta(seconds=self.TIME_UNIT)
+        )
+
+    async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
+        remaining = await db_conn.fetch(
+            """
+                SELECT COUNT(request_id) FROM rate_limits WHERE (route = $1 AND expiration >= $2);
+            """,
+            self.ROUTE, datetime.datetime.now()
+        )
+
+        try:
+            return self.MAX_REQUESTS - remaining[0].get("count")
+        except ValueError:
+            return 0
+
+    async def _trigger_cooldown(self, request_id: int) -> None:
+        async with constants.DB_POOL.acquire() as db_conn:
+            if not await self._check_cooldown(request_id, db_conn):
+                await db_conn.execute(
+                    """
+                        INSERT INTO cooldowns (route, expiration) VALUES ($1, $2);
+                    """,
+                    self.ROUTE, datetime.datetime.now() + datetime.timedelta(seconds=self.COOLDOWN)
+                )
+
+    async def _check_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> bool:
+        remaining = await self._get_remaining_cooldown(request_id, db_conn)
+
+        if remaining > 0:
+            return True
+        elif remaining == -1:
+            return False
+        else:
+            await db_conn.execute(
+                """
+                    DELETE FROM cooldowns WHERE (route = $1)
+                """,
+                self.ROUTE
+            )
+            await self._clear_rate_limits(request_id)
+
+            return False
+
+    async def _get_remaining_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> int:
+        response = await db_conn.fetch(
+            """
+                SELECT * FROM cooldowns WHERE (route = $1)
+            """,
+            self.ROUTE
+        )
+
+        if len(response) > 0:
+            remaining: datetime.timedelta = response[0].get("expiration") - datetime.datetime.now()
+            return int(remaining.total_seconds() // 1) if remaining.total_seconds() >= 0 else 0
+
+        return -1
