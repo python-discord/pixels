@@ -79,7 +79,8 @@ class __BucketBase:
         self.state: __BucketBase._STATE = {}
 
         # Bucket Params
-        self.ROUTE: typing.Optional[str] = None
+        self.ROUTE_NAME: typing.Optional[str] = None
+        self.ROUTES: typing.List[int] = []
         self.BYPASS = bypass
         self.MAX_REQUESTS, self.TIME_UNIT = max_requests
         self.COOLDOWN = cooldown_sec
@@ -105,6 +106,10 @@ class __BucketBase:
         if not isinstance(func, typing.Callable):
             raise Exception("First parameter of rate limiter must be a function.")
 
+        if id(func) not in self.ROUTES:
+            self.ROUTES.append(id(func))
+            self.ROUTE_NAME = "|".join([str(route) for route in self.ROUTES])
+
         # functools.wraps is used here to wrap the endpoint while maintaining the signature
         @functools.wraps(func)
         async def caller(*_args, **_kwargs) -> fastapi.Response:
@@ -117,9 +122,6 @@ class __BucketBase:
 
             await self._pre_call(*_args, _request_id=request_id, **_kwargs)
             await self._init_state(request_id, request)
-
-            if self.ROUTE is None:
-                self.ROUTE = request.scope.get("path")
 
             db_conn = request.state.db_conn
 
@@ -215,7 +217,7 @@ class __BucketBase:
                 """
                     DELETE FROM rate_limits WHERE (route = $1);
                 """,
-                self.ROUTE
+                self.ROUTE_NAME
             )
 
     async def _record_interaction(self, request_id: int, db_conn: asyncpg.Connection) -> None:
@@ -272,7 +274,7 @@ class User(__BucketBase):
                 """
                     DELETE FROM rate_limits WHERE (route = $1 AND user_id = $2);
                 """,
-                self.ROUTE, self.state.get(request_id).user_id
+                self.ROUTE_NAME, self.state.get(request_id).user_id
             )
 
     async def _record_interaction(self, request_id: int, db_conn: asyncpg.Connection) -> None:
@@ -281,7 +283,7 @@ class User(__BucketBase):
                 INSERT INTO rate_limits (user_id, route, expiration) VALUES ($1, $2, $3);
             """,
             self.state.get(request_id).user_id,
-            self.ROUTE,
+            self.ROUTE_NAME,
             datetime.datetime.now() + datetime.timedelta(seconds=self.TIME_UNIT)
         )
 
@@ -290,7 +292,7 @@ class User(__BucketBase):
             """
                 SELECT COUNT(request_id) FROM rate_limits WHERE (user_id = $1 AND route = $2 AND expiration >= $3);
             """,
-            self.state.get(request_id).user_id, self.ROUTE, datetime.datetime.now()
+            self.state.get(request_id).user_id, self.ROUTE_NAME, datetime.datetime.now()
         )
 
         try:
@@ -306,7 +308,7 @@ class User(__BucketBase):
                         INSERT INTO cooldowns (user_id, route, expiration) VALUES ($1, $2, $3);
                     """,
                     self.state.get(request_id).user_id,
-                    self.ROUTE,
+                    self.ROUTE_NAME,
                     datetime.datetime.now() + datetime.timedelta(seconds=self.COOLDOWN)
                 )
 
@@ -322,7 +324,7 @@ class User(__BucketBase):
                 """
                     DELETE FROM cooldowns WHERE (user_id = $1 AND route = $2)
                 """,
-                self.state.get(request_id).user_id, self.ROUTE
+                self.state.get(request_id).user_id, self.ROUTE_NAME
             )
             await self._clear_rate_limits(request_id)
 
@@ -333,7 +335,7 @@ class User(__BucketBase):
             """
                 SELECT * FROM cooldowns WHERE (user_id = $1 AND route = $2)
             """,
-            self.state.get(request_id).user_id, self.ROUTE
+            self.state.get(request_id).user_id, self.ROUTE_NAME
         )
 
         if len(response) > 0:
@@ -358,7 +360,7 @@ class Global(__BucketBase):
             """
                 INSERT INTO rate_limits (route, expiration) VALUES ($1, $2);
             """,
-            self.ROUTE, datetime.datetime.now() + datetime.timedelta(seconds=self.TIME_UNIT)
+            self.ROUTE_NAME, datetime.datetime.now() + datetime.timedelta(seconds=self.TIME_UNIT)
         )
 
     async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
@@ -366,7 +368,7 @@ class Global(__BucketBase):
             """
                 SELECT COUNT(request_id) FROM rate_limits WHERE (route = $1 AND expiration >= $2);
             """,
-            self.ROUTE, datetime.datetime.now()
+            self.ROUTE_NAME, datetime.datetime.now()
         )
 
         try:
@@ -381,7 +383,7 @@ class Global(__BucketBase):
                     """
                         INSERT INTO cooldowns (route, expiration) VALUES ($1, $2);
                     """,
-                    self.ROUTE, datetime.datetime.now() + datetime.timedelta(seconds=self.COOLDOWN)
+                    self.ROUTE_NAME, datetime.datetime.now() + datetime.timedelta(seconds=self.COOLDOWN)
                 )
 
     async def _check_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> bool:
@@ -396,7 +398,7 @@ class Global(__BucketBase):
                 """
                     DELETE FROM cooldowns WHERE (route = $1)
                 """,
-                self.ROUTE
+                self.ROUTE_NAME
             )
             await self._clear_rate_limits(request_id)
 
@@ -407,7 +409,7 @@ class Global(__BucketBase):
             """
                 SELECT * FROM cooldowns WHERE (route = $1)
             """,
-            self.ROUTE
+            self.ROUTE_NAME
         )
 
         if len(response) > 0:
