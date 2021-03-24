@@ -1,3 +1,4 @@
+import asyncio
 import enum
 import logging
 import re
@@ -16,6 +17,7 @@ from pydantic import BaseModel, validator
 from starlette.responses import RedirectResponse
 
 from april import DB_POOL, canvas, constants
+from april.utils import ratelimits
 
 log = logging.getLogger(__name__)
 
@@ -124,6 +126,10 @@ async def startup() -> None:
     """Create a asyncpg connection pool on startup."""
     # Init DB Connection
     await DB_POOL
+
+    # Start background tasks
+    app.state.rate_cleaner = asyncio.create_task(ratelimits.start_cleaner(DB_POOL))
+
     async with DB_POOL.acquire() as connection:
         await canvas.reload_cache(connection)
 
@@ -131,6 +137,7 @@ async def startup() -> None:
 @app.on_event("shutdown")
 async def shutdown() -> None:
     """Close down the app."""
+    app.state.rate_limit_cleaner.cancel()
     await DB_POOL.close()
 
 
