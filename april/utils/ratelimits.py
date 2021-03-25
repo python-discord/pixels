@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 
 async def start_cleaner(db_pool: asyncpg.Pool) -> None:
-    """Do periodic checks on the DB, and clean up expired cooldown entries."""
+    """Do periodic checks on the DB, and clean up expired rate limit entries."""
     cleanup_statement = (
         """
             DELETE FROM rate_limits WHERE (expiration < $1);
@@ -37,9 +37,9 @@ class __BucketBase:
     The base class for all rate limit buckets.
 
     Descendents must at the very least implement logic for:
-        _calculate_remaining_requests, trigger_cooldown, check_cooldown, get_remaining_cooldown
+        _record_interaction, _calculate_remaining_requests, _trigger_cooldown, _check_cooldown, _get_remaining_cooldown
 
-    All other functions are designed to be as broad as possible, but they can be modified as needed.
+    All other functions are designed to be as malleable as possible, but they can be modified as needed.
     Ideally, avoid changing the constructor, to provide the most consistent interface possible.
     """
 
@@ -250,7 +250,7 @@ class __BucketBase:
 
 
 class User(__BucketBase):
-    """A per user request handler."""
+    """A per user request bucket."""
 
     @dataclass
     class _StateVariables:
@@ -357,7 +357,7 @@ class ModUser(User):
 
 
 class Global(__BucketBase):
-    """A bucket that applies to all users."""
+    """A bucket that applies to all usages of a route."""
 
     async def _record_interaction(self, request_id: int, db_conn: asyncpg.Connection) -> None:
         await db_conn.execute(
