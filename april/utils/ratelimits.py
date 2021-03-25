@@ -5,6 +5,7 @@ import functools
 import inspect
 import logging
 import typing
+from collections import namedtuple
 from dataclasses import dataclass
 
 import asyncpg
@@ -59,18 +60,19 @@ class __BucketBase:
             self.remaining = remaining
 
     def __init__(
-            self,
-            max_requests: typing.Tuple[int, int],
-            cooldown_sec: int,
+            self, *,
+            requests: int,
+            time_unit: int,
+            cooldown: int,
             count_failed_requests: bool = True,
-            *, bypass: _BYPASS_TYPE = lambda: False,
+            bypass: _BYPASS_TYPE = lambda: False,
     ):
         """
-        Bucket constructor.
+        Bucket constructor. Limits are enforced as `requests` / `time unit`.
 
-        :param max_requests: A tuple representing the max requests allowed for this bucket per second,
-            in the format: (requests, seconds). See specific bucket documentation for more info.
-        :param cooldown_sec: The time in seconds to halt requests if a limit is reached.
+        :param requests: The maximum allowed requests for this bucket per `time_unit`.
+        :param time_unit: The time unit for requests in seconds.
+        :param cooldown: The penalty cooldown in seconds for passing the allowed request limit.
         :param count_failed_requests: Whether to count 4xx return codes in the rate limit. Defaults to True.
         :param bypass: A function that can override the regular rate limit checks.
         """
@@ -82,8 +84,10 @@ class __BucketBase:
         self.ROUTE_NAME: typing.Optional[str] = None
         self.ROUTES: typing.List[int] = []
         self.BYPASS = bypass
-        self.MAX_REQUESTS, self.TIME_UNIT = max_requests
-        self.COOLDOWN = cooldown_sec
+
+        _limits_type = namedtuple("LIMITS", "requests, time_unit, cooldown")
+        self.LIMITS: _limits_type = _limits_type(requests, time_unit, cooldown)
+
         self.COUNT_FAILED = count_failed_requests
 
         self._post_init()
@@ -284,7 +288,7 @@ class User(__BucketBase):
             """,
             self.state.get(request_id).user_id,
             self.ROUTE_NAME,
-            datetime.datetime.now() + datetime.timedelta(seconds=self.TIME_UNIT)
+            datetime.datetime.now() + datetime.timedelta(seconds=self.LIMITS.time_unit)
         )
 
     async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
@@ -296,7 +300,7 @@ class User(__BucketBase):
         )
 
         try:
-            return self.MAX_REQUESTS - remaining[0].get("count")
+            return self.LIMITS.requests - remaining[0].get("count")
         except ValueError:
             return 0
 
@@ -309,7 +313,7 @@ class User(__BucketBase):
                     """,
                     self.state.get(request_id).user_id,
                     self.ROUTE_NAME,
-                    datetime.datetime.now() + datetime.timedelta(seconds=self.COOLDOWN)
+                    datetime.datetime.now() + datetime.timedelta(seconds=self.LIMITS.cooldown)
                 )
 
     async def _check_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> bool:
@@ -360,7 +364,7 @@ class Global(__BucketBase):
             """
                 INSERT INTO rate_limits (route, expiration) VALUES ($1, $2);
             """,
-            self.ROUTE_NAME, datetime.datetime.now() + datetime.timedelta(seconds=self.TIME_UNIT)
+            self.ROUTE_NAME, datetime.datetime.now() + datetime.timedelta(seconds=self.LIMITS.time_unit)
         )
 
     async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
@@ -372,7 +376,7 @@ class Global(__BucketBase):
         )
 
         try:
-            return self.MAX_REQUESTS - remaining[0].get("count")
+            return self.LIMITS.requests - remaining[0].get("count")
         except ValueError:
             return 0
 
@@ -383,7 +387,7 @@ class Global(__BucketBase):
                     """
                         INSERT INTO cooldowns (route, expiration) VALUES ($1, $2);
                     """,
-                    self.ROUTE_NAME, datetime.datetime.now() + datetime.timedelta(seconds=self.COOLDOWN)
+                    self.ROUTE_NAME, datetime.datetime.now() + datetime.timedelta(seconds=self.LIMITS.cooldown)
                 )
 
     async def _check_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> bool:
