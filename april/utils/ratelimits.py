@@ -121,7 +121,7 @@ class __BucketBase:
             request_id = self.request_id
             self.request_id += 1
 
-            request: fastapi.Request = _kwargs.get("request")
+            request: fastapi.Request = _kwargs['request']
             response: typing.Optional[fastapi.Response] = None
 
             await self._pre_call(*_args, _request_id=request_id, **_kwargs)
