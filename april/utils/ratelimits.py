@@ -294,17 +294,14 @@ class User(__BucketBase):
         )
 
     async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
-        remaining = await db_conn.fetch(
+        past_requests = await db_conn.fetchval(
             """
                 SELECT COUNT(request_id) FROM rate_limits WHERE (user_id = $1 AND route = $2 AND expiration >= $3);
             """,
             self.state[request_id].user_id, self.ROUTE_NAME, datetime.datetime.now()
         )
 
-        try:
-            return self.LIMITS.requests - remaining[0].get("count")
-        except ValueError:
-            return 0
+        return self.LIMITS.requests - past_requests
 
     async def _trigger_cooldown(self, request_id: int) -> None:
         async with constants.DB_POOL.acquire() as db_conn:
@@ -337,15 +334,15 @@ class User(__BucketBase):
             return False
 
     async def _get_remaining_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> int:
-        response = await db_conn.fetch(
+        response = await db_conn.fetchval(
             """
-                SELECT * FROM cooldowns WHERE (user_id = $1 AND route = $2)
+                SELECT expiration FROM cooldowns WHERE (user_id = $1 AND route = $2)
             """,
             self.state[request_id].user_id, self.ROUTE_NAME
         )
 
-        if len(response) > 0:
-            remaining: datetime.timedelta = response[0].get("expiration") - datetime.datetime.now()
+        if response is not None:
+            remaining: datetime.timedelta = response - datetime.datetime.now()
             return int(remaining.total_seconds() // 1) if remaining.total_seconds() >= 0 else 0
 
         return -1
@@ -370,17 +367,14 @@ class Global(__BucketBase):
         )
 
     async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
-        remaining = await db_conn.fetch(
+        past_requests = await db_conn.fetchval(
             """
                 SELECT COUNT(request_id) FROM rate_limits WHERE (route = $1 AND expiration >= $2);
             """,
             self.ROUTE_NAME, datetime.datetime.now()
         )
 
-        try:
-            return self.LIMITS.requests - remaining[0].get("count")
-        except ValueError:
-            return 0
+        return self.LIMITS.requests - past_requests
 
     async def _trigger_cooldown(self, request_id: int) -> None:
         async with constants.DB_POOL.acquire() as db_conn:
@@ -411,15 +405,15 @@ class Global(__BucketBase):
             return False
 
     async def _get_remaining_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> int:
-        response = await db_conn.fetch(
+        response = await db_conn.fetchval(
             """
-                SELECT * FROM cooldowns WHERE (route = $1)
+                SELECT expiration FROM cooldowns WHERE (route = $1)
             """,
             self.ROUTE_NAME
         )
 
-        if len(response) > 0:
-            remaining: datetime.timedelta = response[0].get("expiration") - datetime.datetime.now()
+        if response is not None:
+            remaining: datetime.timedelta = response - datetime.datetime.now()
             return int(remaining.total_seconds() // 1) if remaining.total_seconds() >= 0 else 0
 
         return -1
