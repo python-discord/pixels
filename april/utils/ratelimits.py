@@ -162,7 +162,7 @@ class __BucketBase:
                 response.headers.append("X-Remaining-Requests", str(remaining_requests))
 
             # Setup post interaction tasks
-            state = self.state.get(request_id)
+            state = self.state[request_id]
 
             tasks = response.background or fastapi.BackgroundTasks()
             tasks.add_task(self.record_interaction, request_id=request_id, response_code=response.status_code)
@@ -190,7 +190,7 @@ class __BucketBase:
 
     async def get_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
         """Return the number of remaining requests. Logic wrapper for _remaining_getter."""
-        state = self.state.get(request_id)
+        state = self.state[request_id]
 
         # Skip call if it is already known for this request.
         if state.remaining_requests is None:
@@ -280,7 +280,7 @@ class User(__BucketBase):
                 """
                     DELETE FROM rate_limits WHERE (route = $1 AND user_id = $2);
                 """,
-                self.ROUTE_NAME, self.state.get(request_id).user_id
+                self.ROUTE_NAME, self.state[request_id].user_id
             )
 
     async def _record_interaction(self, request_id: int, db_conn: asyncpg.Connection) -> None:
@@ -288,7 +288,7 @@ class User(__BucketBase):
             """
                 INSERT INTO rate_limits (user_id, route, expiration) VALUES ($1, $2, $3);
             """,
-            self.state.get(request_id).user_id,
+            self.state[request_id].user_id,
             self.ROUTE_NAME,
             datetime.datetime.now() + datetime.timedelta(seconds=self.LIMITS.time_unit)
         )
@@ -298,7 +298,7 @@ class User(__BucketBase):
             """
                 SELECT COUNT(request_id) FROM rate_limits WHERE (user_id = $1 AND route = $2 AND expiration >= $3);
             """,
-            self.state.get(request_id).user_id, self.ROUTE_NAME, datetime.datetime.now()
+            self.state[request_id].user_id, self.ROUTE_NAME, datetime.datetime.now()
         )
 
         try:
@@ -313,7 +313,7 @@ class User(__BucketBase):
                     """
                         INSERT INTO cooldowns (user_id, route, expiration) VALUES ($1, $2, $3);
                     """,
-                    self.state.get(request_id).user_id,
+                    self.state[request_id].user_id,
                     self.ROUTE_NAME,
                     datetime.datetime.now() + datetime.timedelta(seconds=self.LIMITS.cooldown)
                 )
@@ -330,7 +330,7 @@ class User(__BucketBase):
                 """
                     DELETE FROM cooldowns WHERE (user_id = $1 AND route = $2)
                 """,
-                self.state.get(request_id).user_id, self.ROUTE_NAME
+                self.state[request_id].user_id, self.ROUTE_NAME
             )
             await self._clear_rate_limits(request_id)
 
@@ -341,7 +341,7 @@ class User(__BucketBase):
             """
                 SELECT * FROM cooldowns WHERE (user_id = $1 AND route = $2)
             """,
-            self.state.get(request_id).user_id, self.ROUTE_NAME
+            self.state[request_id].user_id, self.ROUTE_NAME
         )
 
         if len(response) > 0:
