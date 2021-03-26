@@ -167,7 +167,8 @@ class __BucketBase:
             tasks = response.background or fastapi.BackgroundTasks()
             tasks.add_task(self.record_interaction, request_id=request_id, response_code=response.status_code)
 
-            [tasks.add_task(task) for task in state.clean_up_tasks]
+            for task in state.clean_up_tasks:
+                tasks.add_task(task)
             self.clean_up_tasks = []
 
             # Make sure to remove the request state after everything else has been run
