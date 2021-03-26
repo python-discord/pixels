@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import functools
 import inspect
+import json
 import logging
 import typing
 from collections import namedtuple
@@ -10,7 +11,7 @@ from dataclasses import dataclass
 
 import asyncpg
 import fastapi
-from fastapi import routing
+from fastapi.encoders import jsonable_encoder
 
 from april import constants
 from april.utils import database
@@ -145,12 +146,12 @@ class __BucketBase:
 
             if not response:
                 result = await func(*_args, **_kwargs)
-                response = fastapi.Response()
 
                 if isinstance(result, fastapi.Response):
                     response = result
                 else:
-                    response.content = await routing.serialize_response(response_content=response)
+                    clean_result = jsonable_encoder(result)
+                    response = fastapi.Response(json.dumps(clean_result, indent=4))
 
                 remaining_requests = await self.get_remaining_requests(request_id, db_conn)
 
