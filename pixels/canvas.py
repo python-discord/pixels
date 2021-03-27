@@ -2,7 +2,7 @@ import typing as t
 
 from asyncpg import Connection
 
-from april import constants as c
+from pixels import constants as c
 
 cache: bytearray = bytearray(c.width * c.height * 3)
 

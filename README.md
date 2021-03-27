@@ -1,7 +1,11 @@
-# April experiment
+# Pixels!
 
 ## The General Idea
-We have a collaborative image, similar to r/Place, where users can draw one pixel every X minutes using an API. This would also double as a learning experience for people to learn how to interact with an API appropriately (rate limits, etc).
+An open source, API-driven, collaborative learning tool. Users can colour a pixel by posting data to an API. In doing so, they will learn how to:
+ - Read formal API docs,
+ - Interact with an API,
+ - Correctly handle rate limits & authentication,
+ - Render images from raw bytes
 
 ## Notion
 https://www.notion.so/pythondiscord/2021-April-Experiment-db5b5eb529ff47e096026ae8fedab02e

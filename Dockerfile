@@ -5,7 +5,7 @@ ENV PIP_NO_CACHE_DIR=false \
     PIPENV_HIDE_EMOJIS=1 \
     PIPENV_IGNORE_VIRTUALENVS=1 \
     PIPENV_NOSPIN=1 \
-    MODULE_NAME="april" \
+    MODULE_NAME="pixels" \
     MAX_WORKERS=10
 
 # Install pipenv

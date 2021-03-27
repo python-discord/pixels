@@ -13,8 +13,8 @@ import asyncpg
 import fastapi
 from fastapi.encoders import jsonable_encoder
 
-from april import constants
-from april.utils import database
+from pixels import constants
+from pixels.utils import database
 
 log = logging.getLogger(__name__)
 

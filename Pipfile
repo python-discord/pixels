@@ -31,6 +31,6 @@ requests = "*"
 python_version = "3.8"
 
 [scripts]
-start = "uvicorn april.april:app"
+start = "uvicorn pixels.pixels:app"
 lint = "pre-commit run --all-files"
 precommit = "pre-commit install"
