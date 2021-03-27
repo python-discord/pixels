@@ -22,4 +22,4 @@ ARG git_sha="development"
 ENV GIT_SHA=$git_sha
 
 # Copy the source code in last to optimize rebuilding the image
-COPY ./pixels /app
+COPY . /app
