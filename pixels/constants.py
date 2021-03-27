@@ -16,10 +16,15 @@ user_url = config("TOKEN_URL", default="https://discord.com/api/users/@me")
 
 width = 160
 height = 90
-pool_size = 20
+min_pool_size = config("MIN_POOL_SIZE", cast=int, default=2)
+max_pool_size = config("MAX_POOL_SIZE", cast=int, default=5)
 
 # Awaited in application startup
-DB_POOL = asyncpg.create_pool(uri, max_size=pool_size)
+DB_POOL = asyncpg.create_pool(
+    uri,
+    min_size=min_pool_size,
+    max_size=max_pool_size
+)
 
 with open("pixels/resources/mods.txt") as f:
     mods = f.read().split()
