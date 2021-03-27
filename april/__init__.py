@@ -1,3 +1,1 @@
-# flake8: noqa
-
-from april.april import app
+from april.april import app  # noqa: F401 Unused import
