@@ -1,3 +1,1 @@
-# flake8: noqa
-
-from pixels.pixels import app
+from pixels.pixels import app  # noqa: F401 Unused import

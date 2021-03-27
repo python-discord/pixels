@@ -17,7 +17,25 @@ CREATE TABLE IF NOT EXISTS  public.pixel_history (
 	CONSTRAINT pixel_history_pk PRIMARY KEY (pixel_history_id)
 );
 
+CREATE TABLE IF NOT EXISTS public.rate_limits (
+    request_id serial NOT NULL,
+    user_id int8,
+    route varchar(255) NOT NULL,
+    expiration TIMESTAMP NOT NULL,
+    CONSTRAINT rate_limits_pk PRIMARY KEY (request_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.cooldowns (
+    request_id serial NOT NULL,
+    user_id int8,
+    route varchar(255) NOT NULL,
+    expiration TIMESTAMP NOT NULL,
+    CONSTRAINT cooldowns_pk PRIMARY KEY (request_id)
+);
+
 ALTER TABLE public.pixel_history ADD CONSTRAINT pixel_history_fk FOREIGN KEY (user_id) REFERENCES users(user_id);
+ALTER TABLE public.rate_limits ADD CONSTRAINT rate_limits_fk FOREIGN KEY (user_id) REFERENCES users(user_id);
+ALTER TABLE public.cooldowns ADD CONSTRAINT cooldowns_fk FOREIGN KEY (user_id) REFERENCES users(user_id);
 
 CREATE OR REPLACE VIEW public.current_pixel
 AS SELECT PH.x,

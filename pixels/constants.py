@@ -1,5 +1,6 @@
 from urllib.parse import unquote
 
+import asyncpg
 from decouple import config
 
 uri = config("DATABASE_URL")
@@ -16,3 +17,9 @@ user_url = config("TOKEN_URL", default="https://discord.com/api/users/@me")
 width = 160
 height = 90
 pool_size = 20
+
+# Awaited in application startup
+DB_POOL = asyncpg.create_pool(uri, max_size=pool_size)
+
+with open("pixels/resources/mods.txt") as f:
+    mods = f.read().split()

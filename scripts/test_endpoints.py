@@ -15,4 +15,14 @@ def check_if_mod() -> dict:
     return r.json()
 
 
-print(check_if_mod())
+def set_to_mod(user_id: int) -> dict:
+    """Makes the given `user_id` a mod."""
+    r = requests.post(
+        f"{base_url}/set_mod",
+        headers=HEADERS,
+        json={"user_id": user_id}
+    )
+    return r.json()
+
+
+print(set_to_mod(386599446571384843))

@@ -1,3 +1,4 @@
+import asyncio
 import enum
 import logging
 import re
@@ -5,7 +6,6 @@ import secrets
 import traceback
 import typing as t
 
-import asyncpg
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
@@ -16,8 +16,8 @@ from jose import JWTError, jwt
 from pydantic import BaseModel, validator
 from starlette.responses import RedirectResponse
 
-from pixels import canvas
-from pixels import constants
+from pixels import canvas, constants
+from pixels.utils import ratelimits
 
 log = logging.getLogger(__name__)
 
@@ -68,6 +68,20 @@ class Pixel(BaseModel):
         """Additional settings for this model."""
 
         schema_extra = {"example": {"x": constants.width // 2, "y": constants.height // 2, "rgb": "00FF00"}}
+
+
+class User(BaseModel):
+    """A user as used by the API."""
+
+    user_id: int
+
+    @validator("user_id")
+    def user_id_must_be_snowflake(cls, user_id: int) -> int:
+        """Ensure the user_id is a valid twitter snowflake."""
+        if user_id.bit_length() <= 63:
+            return user_id
+        else:
+            raise ValueError("user_id must fit within a 64 bit int.")
 
 
 class AuthState(enum.Enum):
@@ -124,15 +138,27 @@ class AuthResult(t.NamedTuple):
 @app.on_event("startup")
 async def startup() -> None:
     """Create a asyncpg connection pool on startup."""
-    app.state.db_pool = await asyncpg.create_pool(constants.uri, max_size=constants.pool_size)
-    async with app.state.db_pool.acquire() as connection:
+    # Init DB Connection
+    await constants.DB_POOL
+
+    # Start background tasks
+    app.state.rate_cleaner = asyncio.create_task(ratelimits.start_cleaner(constants.DB_POOL))
+
+    async with constants.DB_POOL.acquire() as connection:
         await canvas.reload_cache(connection)
+
+
+@app.on_event("shutdown")
+async def shutdown() -> None:
+    """Close down the app."""
+    app.state.rate_limit_cleaner.cancel()
+    await constants.DB_POOL.close()
 
 
 @app.middleware("http")
 async def setup_data(request: Request, callnext: t.Callable) -> Response:
     """Get a connection from the pool for this request."""
-    async with app.state.db_pool.acquire() as connection:
+    async with constants.DB_POOL.acquire() as connection:
         request.state.db_conn = connection
         request.state.auth = await authorized(connection, request.headers.get("Authorization"))
         response = await callnext(request)
@@ -235,12 +261,14 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
         raise PermissionError
     # 22 long string
     token_salt = secrets.token_urlsafe(16)
+    is_mod = user_id in constants.mods
     async with conn.transaction():
         await conn.execute(
-            """INSERT INTO users (user_id, key_salt) VALUES ($1, $2)
-            ON CONFLICT (user_id) DO UPDATE SET key_salt=$2;""",
+            """INSERT INTO users (user_id, key_salt, is_mod) VALUES ($1, $2, $3)
+            ON CONFLICT (user_id) DO UPDATE SET key_salt=$2, is_mod=$3;""",
             int(user_id),
             token_salt,
+            is_mod,
         )
     jwt_data = dict(id=user_id, salt=token_salt)
     return jwt.encode(jwt_data, constants.jwt_secret, algorithm="HS256")
@@ -260,6 +288,30 @@ async def mod_check(request: Request) -> dict:
     """Exmaple of a mod check endpoint."""
     request.state.auth.raise_unless_mod()
     return {"Message": "Hello fellow moderator!"}
+
+
+@app.post("/set_mod")
+async def set_mod(request: Request, user: User) -> dict:
+    """Make another user a mod."""
+    user_id = user.user_id
+    request.state.auth.raise_unless_mod()
+    conn = request.state.db_conn
+    async with conn.transaction():
+        user_state = await conn.fetchrow(
+            "SELECT is_mod FROM users WHERE user_id = $1;", user_id,
+        )
+        if user_state is None:
+            return {"Message": f"User with user_id {user_id} does not exist."}
+        elif user_state['is_mod']:
+            return {"Message": f"User with user_id {user_id} is already a mod."}
+
+        await conn.execute(
+            """
+            UPDATE users SET is_mod = 1 WHERE user_id = $1;
+        """,
+            user_id,
+        )
+    return {"Message": f"Successfully set user with user_id {user_id} to mod"}
 
 
 @app.get("/authorize")
