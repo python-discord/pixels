@@ -10,6 +10,9 @@ An open source, API-driven, collaborative learning tool. Users can colour a pixe
 ## Notion
 https://www.notion.so/pythondiscord/2021-April-Experiment-db5b5eb529ff47e096026ae8fedab02e
 
+## How to use the API
+
+Check out [this brief guide](./guide.md) on how to make authenticated API requests to pixels.
 
 ## .env file
 See this [document](https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker#environment-variables) for uvicorn/fastAPI image env vars
