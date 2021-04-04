@@ -72,7 +72,7 @@ jobs:
 
       # Check out the private "kubernetes" repository in the `kubernetes`
       # subdirectory using a GitHub Personal Access Token
-      - name: Checkout Kuberenetes Repository
+      - name: Checkout Kubernetes Repository
         uses: actions/checkout@v2
         with:
           repository: python-discord/kubernetes
