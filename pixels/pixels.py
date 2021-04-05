@@ -324,6 +324,13 @@ async def authorize() -> Response:
     return RedirectResponse(url=constants.auth_uri)
 
 
+@app.get("/get_size")
+async def get_size(request: Request) -> dict:
+    """Get the size of the pixels canvas."""
+
+    return dict(width=constants.width, height=constants.height)
+
+
 @app.get("/get_pixels")
 async def get_pixels(request: Request) -> Response:
     """
