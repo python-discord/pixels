@@ -39,7 +39,7 @@ Note: you will need the `python-dotenv` (`pip install python-dotenv`) module ins
 
 For this example we'll use the `/set_pixel` endpoint to set a specific pixel on the canvas. Firstly we want to import our HTTP library, for now we'll use the `requests` (`pip install requests`) library.
 
-Let's start off with the `.env` token loading cde we already have as a baseline:
+Let's start off with the `.env` token loading code we already have as a baseline:
 
 ```py
 from dotenv import load_dotenv
