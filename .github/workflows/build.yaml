@@ -38,7 +38,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GHCR_TOKEN  }}
+          password: ${{ secrets.GITHUB_TOKEN  }}
 
       # Build and push the container to the GitHub Container
       # Repository. The container will be tagged as "latest"
@@ -56,3 +56,39 @@ jobs:
             ghcr.io/python-discord/pixels:${{ steps.sha_tag.outputs.tag }}
           build-args: |
             git_sha=${{ github.sha }}
+
+  deploy:
+    needs: build
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # Create a commit SHA-based tag for the container repositories
+      - name: Create SHA Container Tag
+        id: sha_tag
+        run: |
+          tag=$(cut -c 1-7 <<< $GITHUB_SHA)
+          echo "::set-output name=tag::$tag"
+
+      # Check out the private "kubernetes" repository in the `kubernetes`
+      # subdirectory using a GitHub Personal Access Token
+      - name: Checkout Kubernetes Repository
+        uses: actions/checkout@v2
+        with:
+          repository: python-discord/kubernetes
+          token: ${{ secrets.REPO_TOKEN }}
+          path: kubernetes
+
+      - name: Authenticate with Kubernetes
+        uses: azure/k8s-set-context@v1
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Deploy to Kubernetes
+        uses: Azure/k8s-deploy@v1
+        with:
+          manifests: |
+            kubernetes/pixels/deployment.yaml
+          images: 'ghcr.io/python-discord/pixels:${{ steps.sha_tag.outputs.tag }}'
+          kubectl-version: 'latest'
