@@ -327,7 +327,6 @@ async def authorize() -> Response:
 @app.get("/get_size")
 async def get_size(request: Request) -> dict:
     """Get the size of the pixels canvas."""
-
     return dict(width=constants.width, height=constants.height)
 
 
