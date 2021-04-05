@@ -77,7 +77,17 @@ data = {
 Finally, we can make the API request itself, for which we'll need to use the `post` method of requests:
 
 ```py
-requests.post("https://pixels.pythondiscord.com/set_pixel", json=data, headers=headers)
+result = requests.post("https://pixels.pythondiscord.com/set_pixel", json=data, headers=headers)
 ```
 
-This code will create an HTTP POST request to `https://pixels.pythondiscord.com/set_pixel` with the authorization header `Bearer {the_token}` to set the pixel at `(123, 12)` to the hex value `0x87CEEB`.
+This code will create an HTTP POST request to `https://pixels.pythondiscord.com/set_pixel` with the authorization header `Bearer {the_token}` to set the pixel at `(123, 12)` to the hex value `0x87CEEB`, and store the result in the `result` variable.
+
+To check that the request went through correctly we'll print out the confirmation message that the API provides us with:
+
+```py
+print(result.json()["message"])
+```
+
+Which will print, in this case, `added pixel at x=123,y=12 of color 87CEEB`.
+
+For more info about using the API, check out the [API documentation](https://pixels.pythondiscord.com/docs).
