@@ -297,14 +297,14 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 # ENDPOINTS
 @app.get("/", tags=["General Endpoints"])
 async def docs() -> HTMLResponse:
-    """Basic hello world endpoint."""
+    """Return the API docs."""
     template = templates.get_template("docs.html")
     return HTMLResponse(template.render())
 
 
 @app.get("/mod", tags=["Moderation Endpoints"])
 async def mod_check(request: Request) -> dict:
-    """Example of a mod check endpoint."""
+    """Check if the authenticated user is a mod."""
     request.state.auth.raise_unless_mod()
     return {"Message": "Hello fellow moderator!"}
 
