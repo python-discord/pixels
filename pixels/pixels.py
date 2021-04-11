@@ -17,11 +17,27 @@ from pydantic import BaseModel, validator
 from starlette.responses import RedirectResponse
 
 from pixels import canvas, constants
-from pixels.utils import ratelimits
+from pixels.utils import ratelimits, docs
 
 log = logging.getLogger(__name__)
 
-app = FastAPI()
+tags_metadata = [
+    {
+        "name": "Getting Started",
+        "description": docs.get_doc("getting_started"),
+    },
+    {
+        "name": "Rate Limits",
+        "description": docs.get_doc("rate_limits"),
+    },
+]
+
+app = FastAPI(
+    title="Pixels API",
+    description=docs.get_doc("welcome"),
+    version="0.0.1",
+    openapi_tags=tags_metadata,
+)
 templates = Jinja2Templates(directory="pixels/templates")
 
 auth_s = URLSafeSerializer(secrets.token_hex(16))
@@ -277,20 +293,20 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 # ENDPOINTS
 
 
-@app.get("/")
+@app.get("/", tags=["General Endpoints"])
 async def index(request: Request) -> dict:
     """Basic hello world endpoint."""
     return {"Message": "Hello!"}
 
 
-@app.get("/mod")
+@app.get("/mod", tags=["Moderation Endpoints"])
 async def mod_check(request: Request) -> dict:
     """Exmaple of a mod check endpoint."""
     request.state.auth.raise_unless_mod()
     return {"Message": "Hello fellow moderator!"}
 
 
-@app.post("/set_mod")
+@app.post("/set_mod", tags=["Moderation Endpoints"])
 async def set_mod(request: Request, user: User) -> dict:
     """Make another user a mod."""
     user_id = user.user_id
@@ -314,7 +330,7 @@ async def set_mod(request: Request, user: User) -> dict:
     return {"Message": f"Successfully set user with user_id {user_id} to mod"}
 
 
-@app.get("/authorize")
+@app.get("/authorize", tags=["Authorization Endpoints"])
 async def authorize() -> Response:
     """
     Redirect the user to discord authorization, the flow continues in /callback.
@@ -324,13 +340,13 @@ async def authorize() -> Response:
     return RedirectResponse(url=constants.auth_uri)
 
 
-@app.get("/get_size")
+@app.get("/get_size", tags=["Canvas Endpoints"])
 async def get_size(request: Request) -> dict:
     """Get the size of the pixels canvas."""
     return dict(width=constants.width, height=constants.height)
 
 
-@app.get("/get_pixels")
+@app.get("/get_pixels", tags=["Canvas Endpoints"])
 async def get_pixels(request: Request) -> Response:
     """
     Get the current state of all pixels from the db.
@@ -341,7 +357,7 @@ async def get_pixels(request: Request) -> Response:
     return Response(bytes(canvas.cache), media_type="application/octet-stream")
 
 
-@app.post("/set_pixel")
+@app.post("/set_pixel", tags=["Canvas Endpoints"])
 async def set_pixel(request: Request, pixel: Pixel) -> dict:
     """
     Create a new pixel at the specified position with the specified color.
