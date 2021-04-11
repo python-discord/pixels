@@ -14,10 +14,10 @@ from httpx import AsyncClient
 from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
 from pydantic import BaseModel, validator
-from starlette.responses import RedirectResponse, HTMLResponse
+from starlette.responses import HTMLResponse, RedirectResponse
 
 from pixels import canvas, constants
-from pixels.utils import ratelimits, docs
+from pixels.utils import docs, ratelimits
 
 log = logging.getLogger(__name__)
 
