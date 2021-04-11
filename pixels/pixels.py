@@ -14,7 +14,7 @@ from httpx import AsyncClient
 from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
 from pydantic import BaseModel, validator
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, HTMLResponse
 
 from pixels import canvas, constants
 from pixels.utils import ratelimits, docs
@@ -295,19 +295,11 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 
 
 # ENDPOINTS
-
-
 @app.get("/", tags=["General Endpoints"])
-async def index(request: Request) -> dict:
+async def docs() -> HTMLResponse:
     """Basic hello world endpoint."""
-    return {"Message": "Hello!"}
-
-
-@app.get("/docs", tags=["General Endpoints"])
-async def docs(request: Request, token: str = Cookie(None)) -> Response:
-    """Basic hello world endpoint."""
-    token = auth_s.loads(token)
-    return templates.TemplateResponse("docs.html", {"request": request, "token": token})
+    template = templates.get_template("docs.html")
+    return HTMLResponse(template.render())
 
 
 @app.get("/mod", tags=["Moderation Endpoints"])
