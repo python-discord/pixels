@@ -37,6 +37,8 @@ app = FastAPI(
     description=docs.get_doc("welcome"),
     version="0.0.1",
     openapi_tags=tags_metadata,
+    docs_url=None,
+    redoc_url=None,
 )
 templates = Jinja2Templates(directory="pixels/templates")
 
@@ -104,11 +106,13 @@ class AuthState(enum.Enum):
     """Represents possible outcomes of a user attempting to authorize."""
 
     NO_TOKEN = (
-        "There is no token provided, provide one in an Authorization header in the format 'Bearer {your token here}'"
+        "There is no token provided, provide one in an Authorization "
+        "header in the format 'Bearer {your token here}'"
         "or navigate to /authorize to get one"
     )
     BAD_HEADER = "The Authorization header does not specify the Bearer scheme."
-    INVALID_TOKEN = "The token provided is not a valid token, navigate to /authorize to get a new one."
+    INVALID_TOKEN = "The token provided is not a valid token, " \
+                    "navigate to /authorize to get a new one."
     BANNED = "You are banned."
     MODERATOR = "This token belongs to a moderator"
     USER = "This token belongs to a regular user"
@@ -297,6 +301,13 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 async def index(request: Request) -> dict:
     """Basic hello world endpoint."""
     return {"Message": "Hello!"}
+
+
+@app.get("/docs", tags=["General Endpoints"])
+async def docs(request: Request, token: str = Cookie(None)) -> Response:
+    """Basic hello world endpoint."""
+    token = auth_s.loads(token)
+    return templates.TemplateResponse("docs.html", {"request": request, "token": token})
 
 
 @app.get("/mod", tags=["Moderation Endpoints"])
