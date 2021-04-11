@@ -301,7 +301,7 @@ async def index(request: Request) -> dict:
 
 @app.get("/mod", tags=["Moderation Endpoints"])
 async def mod_check(request: Request) -> dict:
-    """Exmaple of a mod check endpoint."""
+    """Example of a mod check endpoint."""
     request.state.auth.raise_unless_mod()
     return {"Message": "Hello fellow moderator!"}
 
