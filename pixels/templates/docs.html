@@ -7,6 +7,28 @@
     <script type="module" src="https://unpkg.com/rapidoc/dist/rapidoc-min.js"></script>
 </head>
 <body>
-    <rapi-doc spec-url = "/openapi.json"> </rapi-doc>
+    <rapi-doc
+            spec-url = "/openapi.json"
+            theme = "dark"
+            render-style = "read"
+            show-header = 'false'
+            show-header=""
+            bg-color="#14191f"
+            text-color="#C5E2FF"
+            nav-bg-color=""
+            nav-text-color=""
+            nav-hover-bg-color=""
+            nav-hover-text-color=""
+            nav-accent-color="#7289DA"
+            primary-color="#7289DA"
+    >
+        <div slot="nav-logo" style="display: flex; align-items: center; justify-content: center;">
+            <img src="https://cdn.discordapp.com/avatars/409107086526644234/68f4c37c00ad3b131ea01acab6ab95bd.png?size=128" style="width:40px; margin-right: 20px; border-radius: 999px">
+            <span style="color:#fff">
+                <b>Python Discord</b>
+                Pixels
+            </span>
+          </div>
+    </rapi-doc>
 </body>
 </html>
