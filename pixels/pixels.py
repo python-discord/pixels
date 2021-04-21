@@ -271,6 +271,36 @@ async def ban_users(request: Request, user_list: t.List[User]) -> dict:
 
     return resp
 
+
+@app.get("/pixel_history", tags=["Moderation Endpoints"])
+async def pixel_history(
+        request: Request,
+        x: int = constants.x_query_validator,
+        y: int = constants.y_query_validator
+) -> dict:
+    """GET the user who edited the pixel with the given co-ordinates."""
+    request.state.auth.raise_unless_mod()
+
+    conn = request.state.db_conn
+
+    sql = """
+    select user_id from pixel_history where 
+    created_at=(select max(created_at) from pixel_history where x=$1 and y=$2) 
+    and x=$1 
+    and y=$2
+    """
+    record = await conn.fetchrow(sql, x, y)
+
+    if not record:
+        return {"Message": f"No user history for pixel ({x}, {y})"}
+
+    user_id = record["user_id"]
+
+    return {
+        "user_id": user_id
+    }
+
+
 @app.get("/authorize", tags=["Authorization Endpoints"])
 async def authorize() -> Response:
     """
