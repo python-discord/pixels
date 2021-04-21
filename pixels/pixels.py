@@ -197,27 +197,6 @@ async def mod_check(request: Request) -> dict:
     return {"Message": "Hello fellow moderator!"}
 
 
-@app.post("/mod_ban", tags=["Moderation Endpoints"])
-async def ban_users(request: Request, user_list: t.List[User]):
-    """Ban users from using the API."""
-    request.state.auth.raise_unless_mod()
-
-    # TODO: check if user is in db.
-    users = tuple([user.user_id for user in user_list])
-
-    # Ref:
-    # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
-    sql = "UPDATE users SET is_banned=TRUE where user_id=any($1::bigint[])"
-    conn = request.state.db_conn
-
-    async with conn.transaction():
-        await conn.execute(
-            sql, users
-        )
-
-    return {"Message": f"Successfully banned the users with the ID(s): {','.join(str(user) for user in users)}"}
-
-
 @app.post("/set_mod", tags=["Moderation Endpoints"])
 async def set_mod(request: Request, user: User) -> dict:
     """Make another user a mod."""
