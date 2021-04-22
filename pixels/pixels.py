@@ -263,10 +263,13 @@ async def pixel_history(
     conn = request.state.db_conn
 
     sql = """
-    select user_id from pixel_history where
-    created_at=(select max(created_at) from pixel_history where x=$1 and y=$2)
-    and x=$1
+    select user_id
+    from pixel_history
+    where x=$1
     and y=$2
+    and not deleted
+    order by pixel_history_id desc
+    limit 1
     """
     record = await conn.fetchrow(sql, x, y)
 
