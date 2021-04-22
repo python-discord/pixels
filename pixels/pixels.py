@@ -221,6 +221,68 @@ async def set_mod(request: Request, user: User) -> dict:
     return {"Message": f"Successfully set user with user_id {user_id} to mod"}
 
 
+@app.post("/mod_ban", tags=["Moderation Endpoints"])
+async def ban_users(request: Request, user_list: t.List[User]) -> dict:
+    """Ban users from using the API."""
+    request.state.auth.raise_unless_mod()
+
+    conn = request.state.db_conn
+    users = [user.user_id for user in user_list]
+
+    # Should be fetched from cache whenever it is implemented.
+    sql = "SELECT * FROM users WHERE user_id=any($1::bigint[])"
+    records = await conn.fetch(sql, tuple(users))
+    db_users = [record["user_id"] for record in records]
+
+    non_db_users = set(users)-set(db_users)
+
+    # Ref:
+    # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
+    sql = "UPDATE users SET is_banned=TRUE where user_id=any($1::bigint[])"
+
+    await conn.execute(
+        sql, db_users
+    )
+
+    resp = {"Banned": db_users}
+    if non_db_users:
+        resp["Not Found"] = non_db_users
+
+    return resp
+
+
+@app.get("/pixel_history", tags=["Moderation Endpoints"])
+async def pixel_history(
+        request: Request,
+        x: int = constants.x_query_validator,
+        y: int = constants.y_query_validator
+) -> dict:
+    """GET the user who edited the pixel with the given co-ordinates."""
+    request.state.auth.raise_unless_mod()
+
+    conn = request.state.db_conn
+
+    sql = """
+    select user_id
+    from pixel_history
+    where x=$1
+    and y=$2
+    and not deleted
+    order by pixel_history_id desc
+    limit 1
+    """
+    record = await conn.fetchrow(sql, x, y)
+
+    if not record:
+        return {"Message": f"No user history for pixel ({x}, {y})"}
+
+    user_id = record["user_id"]
+
+    return {
+        "user_id": user_id
+    }
+
+
 @app.get("/authorize", tags=["Authorization Endpoints"])
 async def authorize() -> Response:
     """

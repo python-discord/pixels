@@ -2,6 +2,8 @@ from urllib.parse import unquote
 
 import asyncpg
 from decouple import config
+from fastapi import Query
+
 
 uri = config("DATABASE_URL")
 
@@ -16,6 +18,10 @@ user_url = config("TOKEN_URL", default="https://discord.com/api/users/@me")
 
 width = 160
 height = 90
+
+x_query_validator = Query(None, ge=0, lt=width)
+y_query_validator = Query(None, ge=0, lt=height)
+
 min_pool_size = config("MIN_POOL_SIZE", cast=int, default=2)
 max_pool_size = config("MAX_POOL_SIZE", cast=int, default=5)
 
