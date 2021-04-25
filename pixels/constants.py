@@ -14,7 +14,7 @@ jwt_secret = config("JWT_SECRET")
 auth_uri = config("AUTH_URI", cast=unquote)
 base_url = config("BASE_URL", default="https://pixel.pythondiscord.com")
 token_url = config("TOKEN_URL", default="https://discord.com/api/oauth2/token")
-user_url = config("TOKEN_URL", default="https://discord.com/api/users/@me")
+user_url = config("USER_URL", default="https://discord.com/api/users/@me")
 
 width = 160
 height = 90
