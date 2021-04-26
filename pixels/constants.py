@@ -1,6 +1,5 @@
 from urllib.parse import unquote
 
-import aioredis
 import asyncpg
 from decouple import config
 from fastapi import Query
@@ -35,7 +34,6 @@ DB_POOL = asyncpg.create_pool(
     min_size=min_pool_size,
     max_size=max_pool_size
 )
-REDIS_POOL = aioredis.create_redis_pool(redis_url)
 
 with open("pixels/resources/mods.txt") as f:
     mods = f.read().split()
