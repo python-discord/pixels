@@ -45,8 +45,17 @@ auth_s = URLSafeSerializer(secrets.token_hex(16))
 
 @app.on_event("startup")
 async def startup() -> None:
-    """Create a asyncpg connection pool on startup."""
-    # Init DB Connection
+    """Create a asyncpg connection pool on startup and setup logging."""
+    # Setup logging
+    format_string = "[%(asctime)s] [%(process)d] [%(levelname)s] %(name)s - %(message)s"
+    date_format_string = "%Y-%m-%d %H:%M:%S %z"
+    logging.basicConfig(
+        format=format_string,
+        datefmt=date_format_string,
+        level=getattr(logging, constants.log_level.upper())
+    )
+
+    # Init DB and Redis Connections
     await constants.DB_POOL
     await constants.REDIS_POOL
 

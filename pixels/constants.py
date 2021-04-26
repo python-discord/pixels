@@ -27,6 +27,8 @@ y_query_validator = Query(None, ge=0, lt=height)
 min_pool_size = config("MIN_POOL_SIZE", cast=int, default=2)
 max_pool_size = config("MAX_POOL_SIZE", cast=int, default=5)
 
+log_level = config("LOG_LEVEL", default="INFO")
+
 # Awaited in application startup
 DB_POOL = asyncpg.create_pool(
     database_url,
