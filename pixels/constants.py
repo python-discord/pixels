@@ -1,11 +1,13 @@
 from urllib.parse import unquote
 
+import aioredis
 import asyncpg
 from decouple import config
 from fastapi import Query
 
 
-uri = config("DATABASE_URL")
+database_url = config("DATABASE_URL")
+redis_url = config("REDIS_URL")
 
 client_id = config("CLIENT_ID")
 client_secret = config("CLIENT_SECRET")
@@ -27,10 +29,11 @@ max_pool_size = config("MAX_POOL_SIZE", cast=int, default=5)
 
 # Awaited in application startup
 DB_POOL = asyncpg.create_pool(
-    uri,
+    database_url,
     min_size=min_pool_size,
     max_size=max_pool_size
 )
+REDIS_POOL = aioredis.create_redis_pool(redis_url)
 
 with open("pixels/resources/mods.txt") as f:
     mods = f.read().split()

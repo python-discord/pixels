@@ -12,6 +12,7 @@ httpx = "*"
 python-jose = {extras = ["cryptography"],version = "*"}
 jinja2 = "*"
 itsdangerous = "*"
+aioredis = "*"
 
 [dev-packages]
 coverage = "~=5.0"

@@ -48,6 +48,7 @@ async def startup() -> None:
     """Create a asyncpg connection pool on startup."""
     # Init DB Connection
     await constants.DB_POOL
+    await constants.REDIS_POOL
 
     # Start background tasks
     app.state.rate_cleaner = asyncio.create_task(ratelimits.start_cleaner(constants.DB_POOL))
