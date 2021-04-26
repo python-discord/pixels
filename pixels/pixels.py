@@ -4,6 +4,7 @@ import secrets
 import traceback
 import typing as t
 
+import aioredis
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
@@ -13,7 +14,8 @@ from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
 from starlette.responses import HTMLResponse, RedirectResponse
 
-from pixels import canvas, constants
+from pixels import constants
+from pixels.canvas import Canvas
 from pixels.models import AuthResult, AuthState, Pixel, User
 from pixels.utils import docs, ratelimits
 
@@ -42,18 +44,36 @@ templates = Jinja2Templates(directory="pixels/templates")
 
 auth_s = URLSafeSerializer(secrets.token_hex(16))
 
+# Global canvas reference
+canvas: t.Optional[Canvas] = None
+
 
 @app.on_event("startup")
 async def startup() -> None:
-    """Create a asyncpg connection pool on startup."""
-    # Init DB Connection
+    """Create a asyncpg connection pool on startup and setup logging."""
+    # We have to make a global canvas object as there is no way for us to send an object to the following requests
+    # from this function.
+    # The global here isn't too bad, having many Canvas objects in use isn't even an issue.
+    global canvas
+
+    # Setup logging
+    format_string = "[%(asctime)s] [%(process)d] [%(levelname)s] %(name)s - %(message)s"
+    date_format_string = "%Y-%m-%d %H:%M:%S %z"
+    logging.basicConfig(
+        format=format_string,
+        datefmt=date_format_string,
+        level=getattr(logging, constants.log_level.upper())
+    )
+
+    # Init DB and Redis Connections
     await constants.DB_POOL
+    redis_pool = await aioredis.create_redis_pool(constants.redis_url)
 
     # Start background tasks
     app.state.rate_cleaner = asyncio.create_task(ratelimits.start_cleaner(constants.DB_POOL))
 
-    async with constants.DB_POOL.acquire() as connection:
-        await canvas.reload_cache(connection)
+    canvas = Canvas(await constants.DB_POOL.acquire(), redis_pool)  # Global
+    await canvas.sync_cache()
 
 
 @app.on_event("shutdown")
@@ -65,12 +85,14 @@ async def shutdown() -> None:
 
 @app.middleware("http")
 async def setup_data(request: Request, callnext: t.Callable) -> Response:
-    """Get a connection from the pool for this request."""
+    """Get a connection from the pool and a canvas reference for this request."""
     async with constants.DB_POOL.acquire() as connection:
         request.state.db_conn = connection
+        request.state.canvas = canvas
         request.state.auth = await authorized(connection, request.headers.get("Authorization"))
         response = await callnext(request)
     request.state.db_conn = None
+    request.state.canvas = None
     return response
 
 
@@ -307,7 +329,8 @@ async def get_pixels(request: Request) -> Response:
     Requires a valid token in an Authorization header.
     """
     request.state.auth.raise_if_failed()
-    return Response(bytes(canvas.cache), media_type="application/octet-stream")
+    # The cast to bytes here is needed by FastAPI ¯\_(ツ)_/¯
+    return Response(bytes(await request.state.canvas.get_pixels()), media_type="application/octet-stream")
 
 
 @app.post("/set_pixel", tags=["Canvas Endpoints"])
@@ -322,16 +345,5 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
     missing Ratelimit
     """
     request.state.auth.raise_if_failed()
-    conn = request.state.db_conn
-    async with conn.transaction():
-        await conn.execute(
-            """
-            INSERT INTO pixel_history (x, y, rgb, user_id, deleted) VALUES ($1, $2, $3, $4, false);
-        """,
-            pixel.x,
-            pixel.y,
-            pixel.rgb,
-            request.state.auth.user_id
-        )
-    canvas.update_cache(**pixel.dict())
+    await request.state.canvas.set_pixel(pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
     return dict(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
