@@ -17,6 +17,12 @@ base_url = config("BASE_URL", default="https://pixel.pythondiscord.com")
 token_url = config("TOKEN_URL", default="https://discord.com/api/oauth2/token")
 user_url = config("USER_URL", default="https://discord.com/api/users/@me")
 
+bot_token = config("BOT_TOKEN")
+webhook_id = int(config("WEBHOOK_ID", default="828316373653782569"))
+webhook_url = config("WEBHOOK_URL")
+webhook_channel_id = int(config("WEBHOOK_CHANNEL", default="828316147657080835"))
+guild_id = int(config("GUILD_ID", default="267624335836053506"))
+
 width = 160
 height = 90
 
