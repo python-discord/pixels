@@ -1,4 +1,4 @@
-Tate limiting functionality.
+Rate limiting functionality.
 
 The following buckets are implemented:
 - Per User
