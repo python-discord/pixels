@@ -14,6 +14,11 @@ https://www.notion.so/pythondiscord/2021-April-Experiment-db5b5eb529ff47e096026a
 
 Check out [this brief guide](./guide.md) on how to make authenticated API requests to pixels.
 
+### Before release
+Before we make pixels generally availible, we have added Discord OAuth to pixels.pythondiscord.com
+
+This doesn't affect making requests to the API, as the gate is only on the root path.
+
 ## .env file
 See this [document](https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker#environment-variables) for uvicorn/fastAPI image env vars
 

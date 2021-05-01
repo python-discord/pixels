@@ -1,11 +1,10 @@
 import asyncio
-import enum
 import logging
-import re
 import secrets
 import traceback
 import typing as t
 
+import aioredis
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
@@ -13,10 +12,11 @@ from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
 from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
-from pydantic import BaseModel, validator
 from starlette.responses import HTMLResponse, RedirectResponse
 
-from pixels import canvas, constants
+from pixels import constants
+from pixels.canvas import Canvas
+from pixels.models import AuthResult, AuthState, Pixel, User
 from pixels.utils import docs, ratelimits
 
 log = logging.getLogger(__name__)
@@ -44,128 +44,36 @@ templates = Jinja2Templates(directory="pixels/templates")
 
 auth_s = URLSafeSerializer(secrets.token_hex(16))
 
-_RGB_RE = re.compile(r"[0-9a-fA-F]{6}")
-
-
-class Pixel(BaseModel):
-    """A pixel as used by the api."""
-
-    x: int
-    y: int
-    rgb: str
-
-    @validator("x")
-    def x_must_be_lt_width(cls, x: int) -> int:
-        """Ensure that x is within the bounds of the image."""
-        if 0 <= x < constants.width:
-            return x
-        else:
-            raise ValueError(f"x must be inside range(0, {constants.width})")
-
-    @validator("y")
-    def y_must_be_lt_height(cls, y: int) -> int:
-        """Ensure that y is within the bounds of the image."""
-        if 0 <= y < constants.height:
-            return y
-        else:
-            raise ValueError(f"y must be inside range(0, {constants.height})")
-
-    @validator("rgb")
-    def rgb_must_be_valid_hex(cls, rgb: str) -> str:
-        """Ensure rgb is a 6 characters long hexadecimal string."""
-        if _RGB_RE.fullmatch(rgb):
-            return rgb
-        else:
-            raise ValueError(
-                f"{rgb!r} is not a valid color, "
-                "please use the hexadecimal format RRGGBB, "
-                "for example FF00ff for purple."
-            )
-
-    class Config:
-        """Additional settings for this model."""
-
-        schema_extra = {"example": {"x": constants.width // 2, "y": constants.height // 2, "rgb": "00FF00"}}
-
-
-class User(BaseModel):
-    """A user as used by the API."""
-
-    user_id: int
-
-    @validator("user_id")
-    def user_id_must_be_snowflake(cls, user_id: int) -> int:
-        """Ensure the user_id is a valid twitter snowflake."""
-        if user_id.bit_length() <= 63:
-            return user_id
-        else:
-            raise ValueError("user_id must fit within a 64 bit int.")
-
-
-class AuthState(enum.Enum):
-    """Represents possible outcomes of a user attempting to authorize."""
-
-    NO_TOKEN = (
-        "There is no token provided, provide one in an Authorization "
-        "header in the format 'Bearer {your token here}'"
-        "or navigate to /authorize to get one"
-    )
-    BAD_HEADER = "The Authorization header does not specify the Bearer scheme."
-    INVALID_TOKEN = "The token provided is not a valid token, " \
-                    "navigate to /authorize to get a new one."
-    BANNED = "You are banned."
-    MODERATOR = "This token belongs to a moderator"
-    USER = "This token belongs to a regular user"
-
-    def __bool__(self) -> bool:
-        """Return whether the authorization was successful."""
-        return self == AuthState.USER or self == AuthState.MODERATOR
-
-    def raise_if_failed(self) -> None:
-        """Raise an HTTPException if a user isn't authorized."""
-        if self:
-            return
-        raise HTTPException(status_code=401, detail=self.value)
-
-    def raise_unless_mod(self) -> None:
-        """Raise an HTTPException if a moderator isn't authorized."""
-        if self == AuthState.MODERATOR:
-            return
-        elif self == AuthState.USER:
-            raise HTTPException(status_code=401, detail="This endpoint is limited to moderators")
-        self.raise_if_failed()
-
-
-class AuthResult(t.NamedTuple):
-    """The possible outcomes of authorization with the user id."""
-
-    state: AuthState
-    user_id: t.Optional[int]
-
-    def __bool__(self) -> bool:
-        """Return whether the authorization was successful."""
-        return bool(self.state)
-
-    def raise_if_failed(self) -> None:
-        """Raise an HTTPException if a user isn't authorized."""
-        self.state.raise_if_failed()
-
-    def raise_unless_mod(self) -> None:
-        """Raise an HTTPException if a moderator isn't authorized."""
-        self.state.raise_unless_mod()
+# Global canvas reference
+canvas: t.Optional[Canvas] = None
 
 
 @app.on_event("startup")
 async def startup() -> None:
-    """Create a asyncpg connection pool on startup."""
-    # Init DB Connection
+    """Create a asyncpg connection pool on startup and setup logging."""
+    # We have to make a global canvas object as there is no way for us to send an object to the following requests
+    # from this function.
+    # The global here isn't too bad, having many Canvas objects in use isn't even an issue.
+    global canvas
+
+    # Setup logging
+    format_string = "[%(asctime)s] [%(process)d] [%(levelname)s] %(name)s - %(message)s"
+    date_format_string = "%Y-%m-%d %H:%M:%S %z"
+    logging.basicConfig(
+        format=format_string,
+        datefmt=date_format_string,
+        level=getattr(logging, constants.log_level.upper())
+    )
+
+    # Init DB and Redis Connections
     await constants.DB_POOL
+    redis_pool = await aioredis.create_redis_pool(constants.redis_url)
 
     # Start background tasks
     app.state.rate_cleaner = asyncio.create_task(ratelimits.start_cleaner(constants.DB_POOL))
 
-    async with constants.DB_POOL.acquire() as connection:
-        await canvas.reload_cache(connection)
+    canvas = Canvas(await constants.DB_POOL.acquire(), redis_pool)  # Global
+    await canvas.sync_cache()
 
 
 @app.on_event("shutdown")
@@ -177,12 +85,14 @@ async def shutdown() -> None:
 
 @app.middleware("http")
 async def setup_data(request: Request, callnext: t.Callable) -> Response:
-    """Get a connection from the pool for this request."""
+    """Get a connection from the pool and a canvas reference for this request."""
     async with constants.DB_POOL.acquire() as connection:
         request.state.db_conn = connection
+        request.state.canvas = canvas
         request.state.auth = await authorized(connection, request.headers.get("Authorization"))
         response = await callnext(request)
     request.state.db_conn = None
+    request.state.canvas = None
     return response
 
 
@@ -333,6 +243,68 @@ async def set_mod(request: Request, user: User) -> dict:
     return {"Message": f"Successfully set user with user_id {user_id} to mod"}
 
 
+@app.post("/mod_ban", tags=["Moderation Endpoints"])
+async def ban_users(request: Request, user_list: t.List[User]) -> dict:
+    """Ban users from using the API."""
+    request.state.auth.raise_unless_mod()
+
+    conn = request.state.db_conn
+    users = [user.user_id for user in user_list]
+
+    # Should be fetched from cache whenever it is implemented.
+    sql = "SELECT * FROM users WHERE user_id=any($1::bigint[])"
+    records = await conn.fetch(sql, tuple(users))
+    db_users = [record["user_id"] for record in records]
+
+    non_db_users = set(users)-set(db_users)
+
+    # Ref:
+    # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
+    sql = "UPDATE users SET is_banned=TRUE where user_id=any($1::bigint[])"
+
+    await conn.execute(
+        sql, db_users
+    )
+
+    resp = {"Banned": db_users}
+    if non_db_users:
+        resp["Not Found"] = non_db_users
+
+    return resp
+
+
+@app.get("/pixel_history", tags=["Moderation Endpoints"])
+async def pixel_history(
+        request: Request,
+        x: int = constants.x_query_validator,
+        y: int = constants.y_query_validator
+) -> dict:
+    """GET the user who edited the pixel with the given co-ordinates."""
+    request.state.auth.raise_unless_mod()
+
+    conn = request.state.db_conn
+
+    sql = """
+    select user_id
+    from pixel_history
+    where x=$1
+    and y=$2
+    and not deleted
+    order by pixel_history_id desc
+    limit 1
+    """
+    record = await conn.fetchrow(sql, x, y)
+
+    if not record:
+        return {"Message": f"No user history for pixel ({x}, {y})"}
+
+    user_id = record["user_id"]
+
+    return {
+        "user_id": user_id
+    }
+
+
 @app.get("/authorize", tags=["Authorization Endpoints"])
 async def authorize() -> Response:
     """
@@ -357,7 +329,8 @@ async def get_pixels(request: Request) -> Response:
     Requires a valid token in an Authorization header.
     """
     request.state.auth.raise_if_failed()
-    return Response(bytes(canvas.cache), media_type="application/octet-stream")
+    # The cast to bytes here is needed by FastAPI ¯\_(ツ)_/¯
+    return Response(bytes(await request.state.canvas.get_pixels()), media_type="application/octet-stream")
 
 
 @app.post("/set_pixel", tags=["Canvas Endpoints"])
@@ -372,16 +345,5 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
     missing Ratelimit
     """
     request.state.auth.raise_if_failed()
-    conn = request.state.db_conn
-    async with conn.transaction():
-        await conn.execute(
-            """
-            INSERT INTO pixel_history (x, y, rgb, user_id, deleted) VALUES ($1, $2, $3, $4, false);
-        """,
-            pixel.x,
-            pixel.y,
-            pixel.rgb,
-            request.state.auth.user_id
-        )
-    canvas.update_cache(**pixel.dict())
+    await request.state.canvas.set_pixel(pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
     return dict(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
