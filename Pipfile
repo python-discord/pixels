@@ -14,7 +14,6 @@ jinja2 = "*"
 itsdangerous = "*"
 aioredis = "*"
 pillow-simd = "*"
-fastapi-utils = "*"
 
 [dev-packages]
 coverage = "~=5.0"
