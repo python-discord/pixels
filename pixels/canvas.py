@@ -37,13 +37,13 @@ class Canvas:
         start_time = time()
 
         transaction = self.redis.multi_exec()
+
+        records = await self.conn.fetch("SELECT x, y, rgb FROM current_pixel ORDER BY x, y")
         # Iterate every line and store the associated cache line
         for line in range(constants.height):
-            records = await self.conn.fetch("SELECT x, rgb FROM current_pixel WHERE y = $1 ORDER BY x", line)
-
             line_bytes = bytearray(3 * constants.width)
 
-            for position, record in enumerate(records):
+            for position, record in enumerate(records[constants.width*line:constants.width*line*2]):
                 line_bytes[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
 
             transaction.set(f"canvas-line-{line}", line_bytes)
