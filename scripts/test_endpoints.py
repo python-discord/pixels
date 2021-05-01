@@ -1,4 +1,5 @@
 import requests
+from PIL import Image
 from decouple import config
 
 api_token = config("API_TOKEN")
@@ -25,4 +26,11 @@ def set_to_mod(user_id: int) -> dict:
     return r.json()
 
 
-print(set_to_mod(386599446571384843))
+def show_image() -> None:
+    """Gets the current image it displays it on screen."""
+    a = requests.get(base_url+'/get_pixels', headers=dict(Authorization='Bearer ' + api_token))
+    a.raise_for_status()
+    Image.frombytes('RGB', (160, 90), a.content).save('2.png')
+
+
+show_image()
