@@ -1,7 +1,6 @@
 ## A couple of prerequisites:
 
-- The current API base location is at `https://pixels.pythondiscord.com`
-- The current API codumentation is available at `https://pixels.pythondiscord.com/docs`
+- The current API base location & docs is at `https://pixels.pythondiscord.com`
 - You will need the `requests` and `python-dotenv` modules to follow this guide.
     - Windows: `pip install requests python-dotenv`
     - Linux/Mac: `pip3 install requests python-dotenv`
@@ -10,7 +9,7 @@ A large asset to you while making API requests will be the [requests library doc
 
 ## Authenticating with the API
 
-API authentication is done using a bearer token in the `Authorization` header of requests made to the API. To obtain a bearer token for yourself, head to https://pixels.pythondiscord.com/authorization and follow the Discord OAuth flow.
+API authentication is done using a bearer token in the `Authorization` header of requests made to the API. To obtain a bearer token for yourself, head to https://pixels.pythondiscord.com/authorize and follow the Discord OAuth flow.
 
 Next, you'll want to keep that token safe in your preferred way of storing secrets. If you haven't dealt with storing secrets before you can utilise the widely used `.env` format.
 
