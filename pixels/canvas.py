@@ -95,26 +95,28 @@ class Canvas:
         """Set the provided pixel."""
         await self.sync_cache(conn)
 
-        # Insert the pixel into the database
-        await conn.execute(
-            """
-            INSERT INTO pixel_history (x, y, rgb, user_id, deleted) VALUES ($1, $2, $3, $4, false);
-        """,
-            x,
-            y,
-            rgb,
-            user_id
-        )
-
-        # Update the cache
+        # Get the line and update the pixel
         line = bytearray(await self.redis.get(f"canvas-line-{y}"))
         line[x * 3:(x + 1) * 3] = bytes.fromhex(rgb)
 
-        await self.redis.set(
-            f"canvas-line-{y}",
-            line
-        )
-        await conn.execute("UPDATE cache_state SET last_synced = now()")
+        async with conn.transaction():
+            # Insert the pixel into the database
+            await conn.execute(
+                """
+                INSERT INTO pixel_history (x, y, rgb, user_id, deleted) VALUES ($1, $2, $3, $4, false);
+            """,
+                x,
+                y,
+                rgb,
+                user_id
+            )
+
+            # Update the cache
+            await self.redis.set(
+                f"canvas-line-{y}",
+                line
+            )
+            await conn.execute("UPDATE cache_state SET last_synced = now()")
 
     async def get_pixels(self) -> bytearray:
         """Returns the whole board."""
