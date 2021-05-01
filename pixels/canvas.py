@@ -13,18 +13,18 @@ log = logging.getLogger(__name__)
 class Canvas:
     """Class used for interacting with the canvas."""
 
-    def __init__(self, conn: Connection, redis: Redis):
-        self.conn = conn
+    def __init__(self, redis: Redis):
         self.redis = redis
 
-    async def _try_acquire_lock(self) -> bool:
+    @staticmethod
+    async def _try_acquire_lock(conn: Connection) -> bool:
         """
         Try to acquire the sync lock from the cache state.
 
         Returns True if the lock has been acquired. The lock functions as a spinlock.
         """
         # We try to set the lock but use a self join to return the previous state.
-        previous_record, = await self.conn.fetch(
+        previous_record, = await conn.fetch(
             """UPDATE cache_state x
             SET sync_lock = true
             FROM (SELECT sync_lock FROM cache_state FOR UPDATE) y
@@ -32,13 +32,13 @@ class Canvas:
             """)
         return not previous_record["previous_state"]
 
-    async def _populate_cache(self) -> None:
+    async def _populate_cache(self, conn: Connection) -> None:
         """Populate the cache and discard old values."""
         start_time = time()
 
         transaction = self.redis.multi_exec()
 
-        records = await self.conn.fetch("SELECT x, y, rgb FROM current_pixel ORDER BY x, y")
+        records = await conn.fetch("SELECT x, y, rgb FROM current_pixel ORDER BY x, y")
         # Iterate every line and store the associated cache line
         for line in range(constants.height):
             line_bytes = bytearray(3 * constants.width)
@@ -55,25 +55,26 @@ class Canvas:
             raise IOError("Error while updating the cache.")
 
         log.info(f"Cache updated finished! (took {time() - start_time}s)")
-        await self.conn.execute("UPDATE cache_state SET last_synced = now()")
+        await conn.execute("UPDATE cache_state SET last_synced = now()")
 
-    async def is_cache_out_of_date(self) -> bool:
+    @staticmethod
+    async def is_cache_out_of_date(conn: Connection) -> bool:
         """Return true if the cache can be considered out of date."""
-        record, = await self.conn.fetch("SELECT last_modified, last_synced FROM cache_state")
+        record, = await conn.fetch("SELECT last_modified, last_synced FROM cache_state")
         return record["last_modified"] > record["last_synced"]
 
-    async def sync_cache(self) -> None:
+    async def sync_cache(self, conn: Connection) -> None:
         """Make sure that the cache is up-to-date."""
-        while await self.is_cache_out_of_date():
+        while await self.is_cache_out_of_date(conn):
             log.info("Cache will be updated")
 
-            if await self._try_acquire_lock():
+            if await self._try_acquire_lock(conn):
                 log.info("Lock acquired. Starting synchronisation.")
                 try:
-                    await self._populate_cache()
+                    await self._populate_cache(conn)
                 # Use a finally block to make sure that the lock is freed
                 finally:
-                    await self.conn.execute("UPDATE cache_state SET sync_lock = false")
+                    await conn.execute("UPDATE cache_state SET sync_lock = false")
             else:
                 # Another process is already syncing the cache, let's just wait patiently.
                 # This can get stuck if the other process never free the lock, although I haven't found a good
@@ -81,7 +82,7 @@ class Canvas:
                 log.info("Lock in use. Waiting for process to be finished")
 
                 while True:
-                    record, = await self.conn.fetch("SELECT sync_lock FROM cache_state")
+                    record, = await conn.fetch("SELECT sync_lock FROM cache_state")
 
                     if not record["sync_lock"]:
                         break
@@ -90,12 +91,12 @@ class Canvas:
         else:
             log.debug("Cache is up-to-date")
 
-    async def set_pixel(self, x: int, y: int, rgb: str, user_id: int) -> None:
+    async def set_pixel(self, conn: Connection, x: int, y: int, rgb: str, user_id: int) -> None:
         """Set the provided pixel."""
-        await self.sync_cache()
+        await self.sync_cache(conn)
 
         # Insert the pixel into the database
-        await self.conn.execute(
+        await conn.execute(
             """
             INSERT INTO pixel_history (x, y, rgb, user_id, deleted) VALUES ($1, $2, $3, $4, false);
         """,
@@ -113,7 +114,7 @@ class Canvas:
             f"canvas-line-{y}",
             line
         )
-        await self.conn.execute("UPDATE cache_state SET last_synced = now()")
+        await conn.execute("UPDATE cache_state SET last_synced = now()")
 
     async def get_pixels(self) -> bytearray:
         """Returns the whole board."""
