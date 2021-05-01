@@ -52,6 +52,9 @@ auth_s = URLSafeSerializer(secrets.token_hex(16))
 # Global canvas reference
 canvas: t.Optional[Canvas] = None
 
+# Global Redis pool reference
+redis_pool: t.Optional[aioredis.Redis] = None
+
 
 @app.on_event("startup")
 async def startup() -> None:
@@ -72,6 +75,9 @@ async def startup() -> None:
 
     # Init DB and Redis Connections
     await constants.DB_POOL
+
+    # Make redis_pool global so other endpoints can get access to it.
+    global redis_pool
     redis_pool = await aioredis.create_redis_pool(constants.redis_url)
 
     # Start background tasks
@@ -359,85 +365,82 @@ async def webhook(request: Request) -> Response:
     """Send or update Discord webhook image."""
     request.state.auth.raise_unless_mod()
 
+    last_message_id = int(await redis_pool.get("last-webhook-message"))
+
+    now = datetime.now()
+
+    # Generate payload that will be sent in payload_json
+    data = {
+        "content": "",
+        "embeds": [{
+            "title": "Pixels State",
+            "image": {
+                "url": f"attachment://pixels_{now.timestamp()}.png"
+            },
+            "footer": {
+                "text": "Last updated"
+            },
+            "timestamp": now.isoformat()
+        }]
+    }
+
+    # Run Pillow stuff in executor because these actions are blocking
+    loop = asyncio.get_event_loop()
+    image = await loop.run_in_executor(
+        None,
+        partial(
+            Image.frombytes,
+            "RGB",
+            (constants.width, constants.height),
+            bytes(await request.state.canvas.get_pixels())
+        )
+    )
+
+    # Increase size of image so this looks better in Discord
+    image = await loop.run_in_executor(
+        None,
+        partial(
+            image.resize,
+            (constants.width * 10, constants.height * 10),
+            Image.NEAREST
+        )
+    )
+
+    # BytesIO gives file-like interface for saving
+    # and later this is able to get actual content what will be sent.
+    file = io.BytesIO()
+    await loop.run_in_executor(None, partial(image.save, file, format="PNG"))
+
+    # Name file to pixels.png
+    files = {
+        "file": (f"pixels_{now.timestamp()}.png", file.getvalue(), "image/png")
+    }
+
     async with AsyncClient(timeout=None) as client:
-        # Get channel ID dynamically to simplify setup
-        webhook_information = (await client.get(constants.webhook_url)).json()
-
-        # Get channel last message
-        last_message = (
-            await client.get(
-                f"{constants.api_base}/channels/{webhook_information['channel_id']}/messages",
-                params={"limit": 1},
-                headers={"Authorization": f"Bot {constants.bot_token}"}
-            )
-        ).json()
-
-        now = datetime.now()
-
-        # Generate payload that will be sent in payload_json
-        data = {
-            "content": "",
-            "embeds": [{
-                "title": "Pixels State",
-                "image": {
-                    "url": f"attachment://pixels_{now.timestamp()}.png"
-                },
-                "footer": {
-                    "text": "Last updated"
-                },
-                "timestamp": now.isoformat()
-            }]
-        }
-
-        # Run Pillow stuff in executor because these actions are blocking
-        loop = asyncio.get_event_loop()
-        image = await loop.run_in_executor(
-            None,
-            partial(
-                Image.frombytes,
-                "RGB",
-                (constants.width, constants.height),
-                bytes(await request.state.canvas.get_pixels())
-            )
-        )
-
-        # Increase size of image so this looks better in Discord
-        image = await loop.run_in_executor(
-            None,
-            partial(
-                image.resize,
-                (constants.width * 10, constants.height * 10),
-                Image.NEAREST
-            )
-        )
-
-        # BytesIO gives file-like interface for saving
-        # and later this is able to get actual content what will be sent.
-        file = io.BytesIO()
-        await loop.run_in_executor(None, partial(image.save, file, format="PNG"))
-
-        # Name file to pixels.png
-        files = {
-            "file": (f"pixels_{now.timestamp()}.png", file.getvalue(), "image/png")
-        }
-
-        # If last message is webhook one, edit this message.
-        if len(last_message) and last_message[0]["author"]["id"] == webhook_information["id"]:
-            # Remove all old attachments
+        # If last message exists in cache, try to edit this
+        if last_message_id is not None:
             data["attachments"] = []
-            await client.patch(
-                f"{constants.webhook_url}/messages/{last_message[0]['id']}",
+            edit_resp = await client.patch(
+                f"{constants.webhook_url}/messages/{last_message_id}",
                 data={"payload_json": json.dumps(data)},
                 files=files
             )
-        else:
-            # Otherwise send new message.
+
+            if edit_resp.status_code != 200:
+                last_message_id = None
+
+        # If no message is found in cache or message is missing, create new message
+        if last_message_id is None:
+            # If we are sending new message, don't specify attachments
+            data.pop("attachments", None)
             # Username can be only set on sending
             data["username"] = "Pixels"
-            await client.post(
+            create_resp = (await client.post(
                 constants.webhook_url,
                 data={"payload_json": json.dumps(data)},
                 files=files
-            )
+            )).json()
+
+            await redis_pool.set("last-webhook-message", create_resp["id"])
 
     return Response(status_code=204)
