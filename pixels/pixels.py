@@ -71,8 +71,8 @@ async def startup() -> None:
     # Start background tasks
     app.state.rate_cleaner = asyncio.create_task(ratelimits.start_cleaner(constants.DB_POOL))
 
-    canvas = Canvas(await constants.DB_POOL.acquire(), redis_pool)  # Global
-    await canvas.sync_cache()
+    canvas = Canvas(redis_pool)  # Global
+    await canvas.sync_cache(await constants.DB_POOL.acquire())
 
 
 @app.on_event("shutdown")
@@ -344,7 +344,7 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
     missing Ratelimit
     """
     request.state.auth.raise_if_failed()
-    await request.state.canvas.set_pixel(pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
+    await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
     return dict(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
 
 
