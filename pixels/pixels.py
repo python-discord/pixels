@@ -344,6 +344,7 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
     missing Ratelimit
     """
     request.state.auth.raise_if_failed()
+    log.info(f"Setting {pixel.x}, {pixel.y} to {pixel.rgb}")
     await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
     return dict(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
 
