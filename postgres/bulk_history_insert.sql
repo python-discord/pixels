@@ -1,6 +1,6 @@
 INSERT INTO public.users
 SELECT u.id, 'secret_key', 't', 'f'
-FROM generate_series(1, 100) as u(id)
+FROM generate_series(0, 100) as u(id)
 ON CONFLICT DO NOTHING;
 
 ALTER TABLE public.pixel_history DROP CONSTRAINT pixel_history_fk;
