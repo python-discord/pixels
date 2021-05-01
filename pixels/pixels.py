@@ -333,7 +333,7 @@ async def get_pixels(request: Request) -> Response:
 
     Requires a valid token in an Authorization header.
     """
-    # request.state.auth.raise_if_failed()
+    request.state.auth.raise_if_failed()
     # The cast to bytes here is needed by FastAPI ¯\_(ツ)_/¯
     return Response(bytes(await request.state.canvas.get_pixels()), media_type="application/octet-stream")
 
