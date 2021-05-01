@@ -1,6 +1,6 @@
 ## A couple of prerequisites:
 
-- The current API base location & docs is at `https://pixels.pythondiscord.com`
+- The current API base location is at `https://pixels.pythondiscord.com`
 - You will need the `requests` and `python-dotenv` modules to follow this guide.
     - Windows: `pip install requests python-dotenv`
     - Linux/Mac: `pip3 install requests python-dotenv`
