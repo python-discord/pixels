@@ -43,7 +43,8 @@ class Canvas:
         for line in range(constants.height):
             line_bytes = bytearray(3 * constants.width)
 
-            for position, record in enumerate(records[constants.width*line:constants.width*line*2]):
+            # Get the current row from the records
+            for position, record in enumerate(records[line * constants.width:(line + 1) * constants.width]):
                 line_bytes[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
 
             transaction.set(f"canvas-line-{line}", line_bytes)
