@@ -1,10 +1,15 @@
 import asyncio
+import io
+import json
 import logging
 import secrets
 import traceback
 import typing as t
+from datetime import datetime
+from functools import partial
 
 import aioredis
+from PIL import Image
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
@@ -328,7 +333,7 @@ async def get_pixels(request: Request) -> Response:
 
     Requires a valid token in an Authorization header.
     """
-    request.state.auth.raise_if_failed()
+    # request.state.auth.raise_if_failed()
     # The cast to bytes here is needed by FastAPI ¯\_(ツ)_/¯
     return Response(bytes(await request.state.canvas.get_pixels()), media_type="application/octet-stream")
 
@@ -347,3 +352,78 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
     request.state.auth.raise_if_failed()
     await request.state.canvas.set_pixel(pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
     return dict(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
+
+
+@app.post("/webhook", tags=["Webhook Endpoints"])
+async def webhook(request: Request) -> Response:
+    """Send or update Discord webhook image."""
+    request.state.auth.raise_unless_mod()
+
+    async with AsyncClient(timeout=None) as client:
+        # Get channel ID dynamically to simplify setup
+        webhook_information = (await client.get(constants.webhook_url)).json()
+
+        # Get channel last message
+        last_message = (
+            await client.get(
+                f"{constants.api_base}/channels/{webhook_information['channel_id']}/messages",
+                params={"limit": 1},
+                headers={"Authorization": f"Bot {constants.bot_token}"}
+            )
+        ).json()
+
+        # Generate payload that will be sent in payload_json
+        data = {
+            "content": "",
+            "embeds": [{
+                "title": "Pixels State",
+                "image": {
+                    "url": "attachment://pixels.png"
+                },
+                "footer": {
+                    "text": "Last updated"
+                },
+                "timestamp": datetime.now().isoformat()
+            }]
+        }
+
+        # Run Pillow stuff in executor because these actions are blocking
+        loop = asyncio.get_event_loop()
+        image = await loop.run_in_executor(
+            None,
+            partial(
+                Image.frombytes,
+                "RGB",
+                (constants.width, constants.height),
+                bytes(await request.state.canvas.get_pixels())
+            )
+        )
+
+        # BytesIO gives file-like interface for saving
+        # and later this is able to get actual content what will be sent.
+        file = io.BytesIO()
+        await loop.run_in_executor(None, partial(image.save, file, format="PNG"))
+
+        # Name file to pixels.png
+        files = {
+            "file": ("pixels.png", file.getvalue(), "image/png")
+        }
+
+        # If last message is webhook one, edit this message.
+        if len(last_message) and last_message[0]["author"]["id"] == webhook_information["id"]:
+            await client.patch(
+                f"{constants.webhook_url}/messages/{last_message[0]['id']}",
+                data={"payload_json": json.dumps(data)},
+                files=files
+            )
+        else:
+            # Otherwise send new message.
+            # Username can be only set on sending
+            data["username"] = "Pixels"
+            await client.post(
+                constants.webhook_url,
+                data={"payload_json": json.dumps(data)},
+                files=files
+            )
+
+    return Response(status_code=204)
