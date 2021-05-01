@@ -365,7 +365,7 @@ async def webhook(request: Request) -> Response:
     """Send or update Discord webhook image."""
     request.state.auth.raise_unless_mod()
 
-    last_message_id = int(await redis_pool.get("last-webhook-message"))
+    last_message_id = await redis_pool.get("last-webhook-message")
 
     now = datetime.now()
 
@@ -421,7 +421,7 @@ async def webhook(request: Request) -> Response:
         if last_message_id is not None:
             data["attachments"] = []
             edit_resp = await client.patch(
-                f"{constants.webhook_url}/messages/{last_message_id}",
+                f"{constants.webhook_url}/messages/{int(last_message_id)}",
                 data={"payload_json": json.dumps(data)},
                 files=files
             )
