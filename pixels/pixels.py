@@ -235,7 +235,7 @@ async def set_mod(request: Request, user: User) -> dict:
 
         await conn.execute(
             """
-            UPDATE users SET is_mod = 1 WHERE user_id = $1;
+            UPDATE users SET is_mod = true WHERE user_id = $1;
         """,
             user_id,
         )
