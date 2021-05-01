@@ -1,10 +1,5 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.8-slim
 
-# There are Pillow (SIMD) requirements.
-RUN apt-get -y update \
-    && apt-get install -y zlib1g-dev libjpeg-dev gcc \
-    && rm -rf /var/lib/apt/lists/*
-
 # Set pip to have cleaner logs and no saved cache
 ENV PIP_NO_CACHE_DIR=false \
     PIPENV_HIDE_EMOJIS=1 \
