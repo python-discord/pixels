@@ -7,6 +7,32 @@
     <script type="module" src="https://unpkg.com/rapidoc/dist/rapidoc-min.js"></script>
 </head>
 <body>
-    <rapi-doc spec-url = "/openapi.json"> </rapi-doc>
+    <rapi-doc
+            spec-url = "/openapi.json"
+            theme = "dark"
+            render-style = "read"
+            show-header = 'false'
+            show-header=""
+            bg-color="#14191f"
+            text-color="#C5E2FF"
+            nav-bg-color=""
+            nav-text-color=""
+            nav-hover-bg-color=""
+            nav-hover-text-color=""
+            nav-accent-color="#7289DA"
+            primary-color="#7289DA"
+            api-key-name="Authorization"
+            api-key-location="header"
+            api-key-value="My API key here"
+            sort-tags="true"
+    >
+        <div slot="nav-logo" style="display: flex; align-items: center; justify-content: center;">
+            <img src="https://raw.githubusercontent.com/python-discord/branding/main/logos/logo_circle/logo_circle.png" style="width:40px; margin-right: 20px; border-radius: 999px">
+            <span style="color:#fff">
+                <b>Python Discord</b>
+                Pixels
+            </span>
+          </div>
+    </rapi-doc>
 </body>
 </html>

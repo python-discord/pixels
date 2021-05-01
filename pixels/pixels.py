@@ -26,22 +26,10 @@ from pixels.utils import docs, ratelimits
 
 log = logging.getLogger(__name__)
 
-tags_metadata = [
-    {
-        "name": "Getting Started",
-        "description": docs.get_doc("getting_started"),
-    },
-    {
-        "name": "Rate Limits",
-        "description": docs.get_doc("rate_limits"),
-    },
-]
-
 app = FastAPI(
     title="Pixels API",
-    description=docs.get_doc("welcome"),
+    description=docs.get_doc("overview"),
     version="0.0.1",
-    openapi_tags=tags_metadata,
     docs_url=None,
     redoc_url=None,
 )
