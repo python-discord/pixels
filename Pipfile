@@ -13,7 +13,7 @@ python-jose = {extras = ["cryptography"],version = "*"}
 jinja2 = "*"
 itsdangerous = "*"
 aioredis = "*"
-pillow-simd = "*"
+pillow = "*"
 
 [dev-packages]
 coverage = "~=5.0"
