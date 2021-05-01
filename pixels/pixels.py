@@ -372,18 +372,20 @@ async def webhook(request: Request) -> Response:
             )
         ).json()
 
+        now = datetime.now()
+
         # Generate payload that will be sent in payload_json
         data = {
             "content": "",
             "embeds": [{
                 "title": "Pixels State",
                 "image": {
-                    "url": "attachment://pixels.png"
+                    "url": f"attachment://pixels_{now.timestamp()}.png"
                 },
                 "footer": {
                     "text": "Last updated"
                 },
-                "timestamp": datetime.now().isoformat()
+                "timestamp": now.isoformat()
             }]
         }
 
@@ -399,6 +401,16 @@ async def webhook(request: Request) -> Response:
             )
         )
 
+        # Increase size of image so this looks better in Discord
+        image = await loop.run_in_executor(
+            None,
+            partial(
+                image.resize,
+                (constants.width * 10, constants.height * 10),
+                Image.NEAREST
+            )
+        )
+
         # BytesIO gives file-like interface for saving
         # and later this is able to get actual content what will be sent.
         file = io.BytesIO()
@@ -406,11 +418,13 @@ async def webhook(request: Request) -> Response:
 
         # Name file to pixels.png
         files = {
-            "file": ("pixels.png", file.getvalue(), "image/png")
+            "file": (f"pixels_{now.timestamp()}.png", file.getvalue(), "image/png")
         }
 
         # If last message is webhook one, edit this message.
         if len(last_message) and last_message[0]["author"]["id"] == webhook_information["id"]:
+            # Remove all old attachments
+            data["attachments"] = []
             await client.patch(
                 f"{constants.webhook_url}/messages/{last_message[0]['id']}",
                 data={"payload_json": json.dumps(data)},
