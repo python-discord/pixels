@@ -3,7 +3,7 @@ from PIL import Image
 from decouple import config
 
 api_token = config("API_TOKEN")
-base_url = "https://pixels.pythondiscord.com"
+base_url = config("BASE_URL", default="https://pixels.pythondiscord.com")
 
 HEADERS = {
     "Authorization": f"Bearer {api_token}"
@@ -37,6 +37,3 @@ def do_webhook() -> None:
     """Gets the current image it displays it on screen."""
     a = requests.post('https://pixels.pythondiscord.com/webhook', headers=dict(Authorization='Bearer ' + api_token))
     a.raise_for_status()
-
-
-set_to_mod(512354988157173763)
