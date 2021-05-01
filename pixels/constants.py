@@ -18,7 +18,6 @@ token_url = config("TOKEN_URL", default="https://discord.com/api/oauth2/token")
 user_url = config("USER_URL", default="https://discord.com/api/users/@me")
 
 api_base = "https://discord.com/api/v8"
-bot_token = config("BOT_TOKEN")
 webhook_url = config("WEBHOOK_URL")
 
 width = 160
