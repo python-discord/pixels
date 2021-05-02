@@ -336,7 +336,7 @@ async def get_pixels(request: Request) -> Response:
 
 
 @app.post("/set_pixel", tags=["Canvas Endpoints"])
-@ratelimits.UserRedis(requests=1, time_unit=120, cooldown=300)
+@ratelimits.UserRedis(requests=1, time_unit=constants.PIXEL_RATELIMIT, cooldown=300)
 async def set_pixel(request: Request, pixel: Pixel) -> dict:
     """
     Create a new pixel at the specified position with the specified color.

@@ -29,6 +29,9 @@ max_pool_size = config("MAX_POOL_SIZE", cast=int, default=5)
 
 log_level = config("LOG_LEVEL", default="INFO")
 
+# How many seconds you have to wait before setting another pixel
+PIXEL_RATE_LIMIT = 120
+
 # Awaited in application startup
 DB_POOL = asyncpg.create_pool(
     database_url,
