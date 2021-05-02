@@ -133,3 +133,6 @@ dmypy.json
 
 # jetbrains
 .idea/
+
+# vscode
+.vscode
