@@ -263,8 +263,10 @@ class UserRedis(__BucketBase):
         clean_up_tasks: typing.List[typing.Callable]
         user_id: int
 
+    state: typing.Dict[int, _StateVariables]
+
     def _post_init(self) -> None:
-        self.redis: Redis = None
+        self.redis: typing.Optional[Redis] = None
 
     async def _pre_call(self, _request_id: int, request: fastapi.Request, *args, **kwargs) -> None:
         request.state.auth.raise_if_failed()
