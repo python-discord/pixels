@@ -140,7 +140,7 @@ class __BucketBase:
 
                 except self.RequestTimeout as e:
                     response = fastapi.Response("You are currently on cooldown. Try again later.", 429)
-                    response.headers.append("X-Remaining-Cooldown", str(e.remaining))
+                    response.headers.append("Cooldown-Reset", str(e.remaining))
 
                 except Exception as e:
                     log.error("Failed to increment rate limiter, falling back to 429.", exc_info=e)
@@ -161,8 +161,9 @@ class __BucketBase:
                     # Subtract one to account for this request.
                     remaining_requests -= 1
 
-                response.headers.append("X-Remaining-Requests", str(remaining_requests))
-
+                response.headers.append("Requests-Remaining", str(remaining_requests))
+                response.headers.append("Requests-Limit", str(self.LIMITS.requests))
+                response.headers.append("Requests-Reset", str(self.LIMITS.time_unit))
             # Setup post interaction tasks
             state = self.state[request_id]
 
@@ -208,7 +209,7 @@ class __BucketBase:
                 remaining = await self.get_remaining_requests(request_id, db_conn) - 1
 
                 # Check if we need to trigger a cooldown
-                if remaining < 0:
+                if remaining == 0:
                     await self._trigger_cooldown(request_id)
 
                 await self._record_interaction(request_id, db_conn)
@@ -310,7 +311,7 @@ class UserRedis(__BucketBase):
     async def _get_remaining_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> int:
         key = f"cooldown-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
 
-        return self.redis.ttl(key)
+        return await self.redis.ttl(key)
 
 
 class User(__BucketBase):
