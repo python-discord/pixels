@@ -14,6 +14,7 @@ jinja2 = "*"
 itsdangerous = "*"
 aioredis = "*"
 aiofiles = "*"
+pillow = "*"
 
 [dev-packages]
 coverage = "~=5.0"

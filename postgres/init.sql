@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS public.cache_state (
     Lock char(1) not null DEFAULT 'X',
     last_modified timestamp NOT NULL DEFAULT now(),
     last_synced timestamp NOT NULL DEFAULT now() - interval '1 day',
-    sync_lock boolean NOT NULL DEFAULT false,
+    sync_lock timestamp NULL DEFAULT NULL,
     constraint PK_T1 PRIMARY KEY (Lock),
     constraint CK_T1_Locked CHECK (Lock='X')
 );
