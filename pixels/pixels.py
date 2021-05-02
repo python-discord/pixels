@@ -8,6 +8,7 @@ import aioredis
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
 from itsdangerous import URLSafeSerializer
@@ -40,6 +41,7 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
 )
+app.mount("/static", StaticFiles(directory="pixels/static"), name="static")
 templates = Jinja2Templates(directory="pixels/templates")
 
 auth_s = URLSafeSerializer(secrets.token_hex(16))
@@ -148,8 +150,15 @@ async def auth_callback(request: Request) -> Response:
 @app.get("/show_token", include_in_schema=False)
 async def show_token(request: Request, token: str = Cookie(None)) -> Response:  # noqa: B008
     """Take a token from URL and show it."""
-    token = auth_s.loads(token)
-    return templates.TemplateResponse("api_token.html", {"request": request, "token": token})
+    template_name = "cookie_disabled.html"
+    context = {"request": request}
+
+    if token:
+        token = auth_s.loads(token)
+        context["token"] = token
+        template_name = "api_token.html"
+
+    return templates.TemplateResponse(template_name, context)
 
 
 async def authorized(conn: Connection, authorization: t.Optional[str]) -> AuthResult:
@@ -206,10 +215,10 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 
 # ENDPOINTS
 @app.get("/", tags=["General Endpoints"])
-async def docs() -> HTMLResponse:
+async def docs(request: Request) -> Response:
     """Return the API docs."""
-    template = templates.get_template("docs.html")
-    return HTMLResponse(template.render())
+    template_name = "docs.html"
+    return templates.TemplateResponse(template_name, {"request": request})
 
 
 @app.get("/mod", tags=["Moderation Endpoints"])
