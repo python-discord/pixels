@@ -1,0 +1,92 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  background-color: #7289da;
+  background-image: url("https://raw.githubusercontent.com/python-discord/branding/master/logos/banner_pattern/banner_pattern.svg");
+  background-size: 128px;
+  font-family: "Hind", "Helvetica", "Arial", sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+h1,
+p {
+  color: black;
+  margin: 0;
+  padding: 0;
+}
+
+h1 {
+  margin-bottom: 15px;
+  font-size: 26px;
+}
+
+p {
+  line-height: 125%;
+}
+
+a {
+  color: #7289da;
+  text-decoration: none;
+}
+.main-box {
+  display: flex;
+  flex-direction: column;
+  max-width: 512px;
+  background-color: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 5px 7px 40px rgba(0, 0, 0, 0.432);
+}
+
+.logo-box {
+  display: flex;
+  justify-content: center;
+  height: 80px;
+  padding: 15px;
+  background-color: #758ad4;
+}
+
+.content-box {
+  padding: 25px;
+}
+
+.api_token {
+  list-style-type: none !important;
+  background-color: rgb(255, 255, 255);
+  border-radius: 5px;
+  padding: 3px 5px;
+  margin: 1px;
+  line-height: 1.4em;
+  width: 310px;
+  outline: none;
+  font-size: 18px;
+}
+
+button {
+  padding: 5px;
+  font-size: 18px;
+  border-radius: 3px;
+  background-color: rgb(255, 255, 255);
+  box-shadow: none;
+  transition: 0.3s;
+}
+
+button:hover {
+  transform: scale(1.03);
+  border: #758ad4 2px solid;
+}
+
+ul {
+  margin: 20px;
+}
