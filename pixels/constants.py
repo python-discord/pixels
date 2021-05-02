@@ -1,3 +1,4 @@
+import asyncio
 from urllib.parse import unquote
 
 import asyncpg
@@ -34,6 +35,8 @@ DB_POOL = asyncpg.create_pool(
     min_size=min_pool_size,
     max_size=max_pool_size
 )
+# Result set during application startup
+REDIS_FUTURE = asyncio.Future()
 
 with open("pixels/resources/mods.txt") as f:
     mods = f.read().split()
