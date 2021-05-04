@@ -4,7 +4,7 @@
   --blurple: #7289da;
   --docs-text-light: #92d6ff;
   --docs-input-background: #0f141a;
-  --docs-text-teal: #C1F0F1;
+  --docs-text-teal: #c1f0f1;
 }
 
 * {
@@ -83,15 +83,18 @@ a {
 }
 
 button {
-  padding: 6px 5px;
-  font-size: 18px;
+  padding: 4px;
+  font-size: 20px;
+  font-weight: 600;
   border-radius: 5px;
   background-color: var(--blurple);
   border: none;
   box-shadow: none;
   cursor: pointer;
-  color: black;
   transition: 0.3s;
+  color: white;
+  text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000,
+    -1px 1px 0 #000, 1px 1px 0 #000;
 }
 
 button:hover {
