@@ -19,6 +19,7 @@ from httpx import AsyncClient
 from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
 from starlette.responses import RedirectResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from pixels import constants
 from pixels.canvas import Canvas
@@ -44,6 +45,13 @@ canvas: t.Optional[Canvas] = None
 
 # Global Redis pool reference
 redis_pool: t.Optional[aioredis.Redis] = None
+
+
+@app.exception_handler(StarletteHTTPException)
+async def my_exception_handler(request, exception):
+    if exception.status_code == 404:
+        return templates.TemplateResponse("not_found.html", {"request": request})
+    return {"detail": exception.detail}
 
 
 @app.on_event("startup")
