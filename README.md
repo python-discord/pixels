@@ -31,8 +31,6 @@ AUTH_URI=<discord OAuth2 URL>
 BASE_URL=<base url for the web server>
 # 32 byte = 64 digit hex string
 JWT_SECRET=c78f1d852e2d5adefc2bc54ed256c5b0c031df81aef21a1ae1720e7f72c2d39
-# Currently only determines where to use a HTTPS redirect middleware
-PROD=true|false
 # Only used for test scripts, can be ignores for normal use
 API_TOKEN=<An api token issued by the project, used by the test script>
 ```

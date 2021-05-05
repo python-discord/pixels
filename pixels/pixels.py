@@ -12,7 +12,6 @@ import aioredis
 from PIL import Image
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -37,8 +36,6 @@ app = FastAPI(
     redoc_url=None,
 )
 app.mount("/static", StaticFiles(directory="pixels/static"), name="static")
-if constants.production:
-    app.add_middleware(HTTPSRedirectMiddleware)
 
 templates = Jinja2Templates(directory="pixels/templates")
 

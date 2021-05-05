@@ -4,7 +4,6 @@ import asyncpg
 from decouple import config
 from fastapi import Query
 
-production = config("PROD", cast=bool, default=True)
 
 database_url = config("DATABASE_URL")
 redis_url = config("REDIS_URL")
