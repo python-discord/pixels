@@ -1,86 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <title>Python Discord Pixels • API Token</title>
-
-  <meta charset="UTF-8">
-
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Hind:wght@400;600&display=swap" rel="stylesheet">
-
-  <style>
-    html {
-      height: 100%;
-    }
-
-    body {
-      background-color: #7289DA;
-      background-image: url("https://raw.githubusercontent.com/python-discord/branding/master/logos/banner_pattern/banner_pattern.svg");
-      background-size: 128px;
-      font-family: "Hind", "Helvetica", "Arial", sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-    }
-
-    h1,
-    p {
-      color: black;
-      padding: 0;
-      margin: 0;
-    }
-
-    h1 {
-      margin-bottom: 15px;
-      font-size: 26px;
-    }
-
-    p {
-      line-height: 125%;
-    }
-
-    a {
-      color: #7289DA;
-    }
-
-    .main-box {
-      display: flex;
-      flex-direction: column;
-      max-width: 512px;
-      background-color: white;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 5px 7px 40px rgba(0, 0, 0, 0.432);
-    }
-
-    .logo-box {
-      display: flex;
-      justify-content: center;
-      height: 80px;
-      padding: 15px;
-      background-color: #758ad4;
-    }
-
-    .content-box {
-      padding: 25px;
-    }
-
-    .api_token {
-      list-style-type: none !important;
-      background-color: #EEE;
-      border-radius: 10px;
-      padding: 3px 5px;
-      margin: 1px;
-      line-height: 1.4em;
-      width: 310px;
-    }
-
-    li {
-      font-family: monospace;
-    }
-  </style>
+{% extends "base.html" %}
+{% block title %}Python Discord Pixels • API Token{% endblock %}
+{% block head %}
   <script type="text/javascript">
     function copyToClipboard(element) {
         var copyText = document.getElementById(element);
@@ -89,21 +9,22 @@
         document.execCommand("copy");
     }
   </script>
-</head>
+{% endblock %}
 
-<body>
+{% block content %}
   <div class="main-box">
     <div class="logo-box">
       <img
         src="https://raw.githubusercontent.com/python-discord/branding/b67897df93e572c1576a9026eb78c785a794d226/logos/logo_banner/logo_site_banner.svg"
-        alt="Python Discord banner" />
+        alt="Python Discord banner"
+      />
     </div>
     <div class="content-box">
       <h2>Your API token:</h2>
-      <input type="text" class="api_token" id="token" value="{{  token  }}" readonly>
-      <button onclick="copyToClipboard('token')">Copy token</button>
+      <div class="token-div">
+        <input type="text" class="api_token" id="token" value="{{  token  }}" readonly>
+        <button onclick="copyToClipboard('token')">Copy token</button>
+      </div>
     </div>
   </div>
-</body>
-
-</html>
+{% endblock %}
