@@ -21,8 +21,10 @@
     </div>
     <div class="content-box">
       <h2>Your API token:</h2>
-      <input type="text" class="api_token" id="token" value="{{  token  }}" readonly>
-      <button onclick="copyToClipboard('token')">Copy token</button>
+      <div class="token-div">
+        <input type="text" class="api_token" id="token" value="{{  token  }}" readonly>
+        <button onclick="copyToClipboard('token')">Copy token</button>
+      </div>
     </div>
   </div>
 {% endblock %}

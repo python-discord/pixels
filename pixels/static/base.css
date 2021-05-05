@@ -93,8 +93,14 @@ button {
   cursor: pointer;
   transition: 0.3s;
   color: white;
-  text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000,
+  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000,
     -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+.token-div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 button:hover {
