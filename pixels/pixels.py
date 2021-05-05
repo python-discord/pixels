@@ -18,8 +18,8 @@ from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
 from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
-from starlette.responses import RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import RedirectResponse
 
 from pixels import constants
 from pixels.canvas import Canvas
@@ -48,7 +48,8 @@ redis_pool: t.Optional[aioredis.Redis] = None
 
 
 @app.exception_handler(StarletteHTTPException)
-async def my_exception_handler(request, exception):
+async def my_exception_handler(request: Request, exception: StarletteHTTPException) -> t.Union[Response, dict]:
+    """Custom exception handler to render template for 404 error."""
     if exception.status_code == 404:
         return templates.TemplateResponse("not_found.html", {"request": request})
     return {"detail": exception.detail}
