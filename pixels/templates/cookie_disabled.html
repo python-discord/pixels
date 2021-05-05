@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Python Discord Pixels • API Token{%endblock %}
+{% block content %}
+  <div class="main-box">
+    <div class="logo-box">
+      <img
+        src="https://raw.githubusercontent.com/python-discord/branding/b67897df93e572c1576a9026eb78c785a794d226/logos/logo_banner/logo_site_banner.svg"
+        alt="Python Discord banner"
+      />
+    </div>
+    <div class="content-box">
+      <h2>Oops! We can not find your token in your browser cookies.</h2>
+      <h3>This can be due to the following reasons:</h3>
+      <ul>
+        <li>
+          Cookie has expired: Did you miss your token?
+          No worries, you can re-request for one by re-authorizing.
+        </li>
+        <li>
+          We cannot display your token since you have your cookies disabled.
+          Follow <a href="https://www.whatismybrowser.com/guides/how-to-enable-cookies/">this site</a> to enable cookies.
+        </li>
+      </ul>
+    </div>
+  </div>
+{% endblock %}
