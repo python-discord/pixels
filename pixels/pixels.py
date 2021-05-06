@@ -53,7 +53,10 @@ async def my_exception_handler(request: Request, exception: StarletteHTTPExcepti
     """Custom exception handler to render template for 404 error."""
     if exception.status_code == 404:
         return templates.TemplateResponse("not_found.html", {"request": request})
-    return {"detail": exception.detail}
+    return Response(
+        status_code=exception.status_code,
+        content=exception.detail
+    )
 
 
 @app.on_event("startup")
