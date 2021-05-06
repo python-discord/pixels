@@ -49,7 +49,7 @@ redis_pool: t.Optional[aioredis.Redis] = None
 
 
 @app.exception_handler(StarletteHTTPException)
-async def my_exception_handler(request: Request, exception: StarletteHTTPException) -> t.Union[Response, dict]:
+async def my_exception_handler(request: Request, exception: StarletteHTTPException) -> Response:
     """Custom exception handler to render template for 404 error."""
     if exception.status_code == 404:
         return templates.TemplateResponse("not_found.html", {"request": request})
