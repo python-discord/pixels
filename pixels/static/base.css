@@ -1,0 +1,112 @@
+:root {
+  --docs-light: #1e2329;
+  --docs-dark: #14191f;
+  --blurple: #7289da;
+  --docs-text-light: #92d6ff;
+  --docs-input-background: #0f141a;
+  --docs-text-teal: #c1f0f1;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  background-image: url("https://raw.githubusercontent.com/python-discord/branding/master/logos/banner_pattern/banner_pattern.svg");
+  background-size: 128px;
+  font-family: "Hind", "Helvetica", "Arial", sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+h1,
+p {
+  margin: 0;
+  padding: 0;
+  line-height: 125%;
+}
+
+h1 {
+  margin-bottom: 15px;
+  font-size: 26px;
+}
+
+a {
+  color: var(--blurple);
+  text-decoration: none;
+}
+.main-box {
+  display: flex;
+  flex-direction: column;
+  max-width: 512px;
+  background-color: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 5px 7px 40px rgba(0, 0, 0, 0.432);
+}
+
+.logo-box {
+  display: flex;
+  justify-content: center;
+  height: 120px;
+  width: auto;
+  padding: 15px;
+  background-color: var(--docs-light);
+}
+
+.content-box {
+  padding: 25px;
+  background-color: var(--docs-dark);
+  color: #fff;
+}
+
+.api_token {
+  list-style-type: none !important;
+  background-color: var(--docs-input-background);
+  padding: 6px 5px;
+  margin: 1px;
+  width: 310px;
+  outline: none;
+  font-size: 18px;
+  color: var(--docs-text-teal);
+  font-weight: 400;
+  border: #758ad4 1px solid;
+  border-radius: 5px;
+}
+
+button {
+  padding: 4px;
+  font-size: 20px;
+  font-weight: 600;
+  border-radius: 5px;
+  background-color: var(--blurple);
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+  transition: 0.3s;
+  color: white;
+  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000,
+    -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+.token-div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+button:hover {
+  transform: scale(1.02);
+}
+
+ul {
+  margin: 20px;
+}

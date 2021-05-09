@@ -13,6 +13,7 @@ python-jose = {extras = ["cryptography"],version = "*"}
 jinja2 = "*"
 itsdangerous = "*"
 aioredis = "*"
+aiofiles = "*"
 pillow = "*"
 
 [dev-packages]
