@@ -42,8 +42,9 @@ class Canvas:
 
         cache = bytearray(constants.width * constants.height * 3)
 
-        records = await conn.fetch("SELECT x, y, rgb FROM current_pixel ORDER BY x, y")
-        for position, record in enumerate(records):
+        records = await conn.fetch("SELECT x, y, rgb FROM current_pixel")
+        for record in records:
+            position = record["y"] * constants.width + record["x"]
             cache[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
 
         await self.redis.set("canvas-cache", cache)
