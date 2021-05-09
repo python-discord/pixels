@@ -1,18 +1,25 @@
 import asyncio
+import io
+import json
 import logging
 import secrets
 import traceback
 import typing as t
+from datetime import datetime
+from functools import partial
 
 import aioredis
+from PIL import Image
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
 from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import RedirectResponse
 
 from pixels import constants
 from pixels.canvas import Canvas
@@ -21,31 +28,35 @@ from pixels.utils import docs, ratelimits
 
 log = logging.getLogger(__name__)
 
-tags_metadata = [
-    {
-        "name": "Getting Started",
-        "description": docs.get_doc("getting_started"),
-    },
-    {
-        "name": "Rate Limits",
-        "description": docs.get_doc("rate_limits"),
-    },
-]
-
 app = FastAPI(
     title="Pixels API",
-    description=docs.get_doc("welcome"),
+    description=docs.get_doc("overview"),
     version="0.0.1",
-    openapi_tags=tags_metadata,
     docs_url=None,
     redoc_url=None,
 )
+app.mount("/static", StaticFiles(directory="pixels/static"), name="static")
+
 templates = Jinja2Templates(directory="pixels/templates")
 
 auth_s = URLSafeSerializer(secrets.token_hex(16))
 
 # Global canvas reference
 canvas: t.Optional[Canvas] = None
+
+# Global Redis pool reference
+redis_pool: t.Optional[aioredis.Redis] = None
+
+
+@app.exception_handler(StarletteHTTPException)
+async def my_exception_handler(request: Request, exception: StarletteHTTPException) -> Response:
+    """Custom exception handler to render template for 404 error."""
+    if exception.status_code == 404:
+        return templates.TemplateResponse("not_found.html", {"request": request})
+    return Response(
+        status_code=exception.status_code,
+        content=exception.detail
+    )
 
 
 @app.on_event("startup")
@@ -67,14 +78,17 @@ async def startup() -> None:
 
     # Init DB and Redis Connections
     await constants.DB_POOL
+
+    # Make redis_pool global so other endpoints can get access to it.
+    global redis_pool
     redis_pool = await aioredis.create_redis_pool(constants.redis_url)
     constants.REDIS_FUTURE.set_result(redis_pool)
 
     # Start background tasks
     app.state.rate_cleaner = asyncio.create_task(ratelimits.start_cleaner(constants.DB_POOL))
 
-    canvas = Canvas(await constants.DB_POOL.acquire(), redis_pool)  # Global
-    await canvas.sync_cache()
+    canvas = Canvas(redis_pool)  # Global
+    await canvas.sync_cache(await constants.DB_POOL.acquire())
 
 
 @app.on_event("shutdown")
@@ -149,8 +163,15 @@ async def auth_callback(request: Request) -> Response:
 @app.get("/show_token", include_in_schema=False)
 async def show_token(request: Request, token: str = Cookie(None)) -> Response:  # noqa: B008
     """Take a token from URL and show it."""
-    token = auth_s.loads(token)
-    return templates.TemplateResponse("api_token.html", {"request": request, "token": token})
+    template_name = "cookie_disabled.html"
+    context = {"request": request}
+
+    if token:
+        token = auth_s.loads(token)
+        context["token"] = token
+        template_name = "api_token.html"
+
+    return templates.TemplateResponse(template_name, context)
 
 
 async def authorized(conn: Connection, authorization: t.Optional[str]) -> AuthResult:
@@ -196,7 +217,7 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
     async with conn.transaction():
         await conn.execute(
             """INSERT INTO users (user_id, key_salt, is_mod) VALUES ($1, $2, $3)
-            ON CONFLICT (user_id) DO UPDATE SET key_salt=$2, is_mod=$3;""",
+            ON CONFLICT (user_id) DO UPDATE SET key_salt=$2;""",
             int(user_id),
             token_salt,
             is_mod,
@@ -207,10 +228,10 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 
 # ENDPOINTS
 @app.get("/", tags=["General Endpoints"])
-async def docs() -> HTMLResponse:
+async def docs(request: Request) -> Response:
     """Return the API docs."""
-    template = templates.get_template("docs.html")
-    return HTMLResponse(template.render())
+    template_name = "docs.html"
+    return templates.TemplateResponse(template_name, {"request": request})
 
 
 @app.get("/mod", tags=["Moderation Endpoints"])
@@ -237,7 +258,7 @@ async def set_mod(request: Request, user: User) -> dict:
 
         await conn.execute(
             """
-            UPDATE users SET is_mod = 1 WHERE user_id = $1;
+            UPDATE users SET is_mod = true WHERE user_id = $1;
         """,
             user_id,
         )
@@ -348,5 +369,92 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
     missing Ratelimit
     """
     request.state.auth.raise_if_failed()
-    await request.state.canvas.set_pixel(pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
+    log.info(f"{request.state.auth.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
+    await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
     return dict(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
+
+
+@app.post("/webhook", tags=["Webhook Endpoints"])
+async def webhook(request: Request) -> Response:
+    """Send or update Discord webhook image."""
+    request.state.auth.raise_unless_mod()
+
+    last_message_id = await redis_pool.get("last-webhook-message")
+
+    now = datetime.now()
+
+    # Generate payload that will be sent in payload_json
+    data = {
+        "content": "",
+        "embeds": [{
+            "title": "Pixels State",
+            "image": {
+                "url": f"attachment://pixels_{now.timestamp()}.png"
+            },
+            "footer": {
+                "text": "Last updated"
+            },
+            "timestamp": now.isoformat()
+        }]
+    }
+
+    # Run Pillow stuff in executor because these actions are blocking
+    loop = asyncio.get_event_loop()
+    image = await loop.run_in_executor(
+        None,
+        partial(
+            Image.frombytes,
+            "RGB",
+            (constants.width, constants.height),
+            bytes(await request.state.canvas.get_pixels())
+        )
+    )
+
+    # Increase size of image so this looks better in Discord
+    image = await loop.run_in_executor(
+        None,
+        partial(
+            image.resize,
+            (constants.width * 10, constants.height * 10),
+            Image.NEAREST
+        )
+    )
+
+    # BytesIO gives file-like interface for saving
+    # and later this is able to get actual content what will be sent.
+    file = io.BytesIO()
+    await loop.run_in_executor(None, partial(image.save, file, format="PNG"))
+
+    # Name file to pixels.png
+    files = {
+        "file": (f"pixels_{now.timestamp()}.png", file.getvalue(), "image/png")
+    }
+
+    async with AsyncClient(timeout=None) as client:
+        # If last message exists in cache, try to edit this
+        if last_message_id is not None:
+            data["attachments"] = []
+            edit_resp = await client.patch(
+                f"{constants.webhook_url}/messages/{int(last_message_id)}",
+                data={"payload_json": json.dumps(data)},
+                files=files
+            )
+
+            if edit_resp.status_code != 200:
+                last_message_id = None
+
+        # If no message is found in cache or message is missing, create new message
+        if last_message_id is None:
+            # If we are sending new message, don't specify attachments
+            data.pop("attachments", None)
+            # Username can be only set on sending
+            data["username"] = "Pixels"
+            create_resp = (await client.post(
+                constants.webhook_url,
+                data={"payload_json": json.dumps(data)},
+                files=files
+            )).json()
+
+            await redis_pool.set("last-webhook-message", create_resp["id"])
+
+    return Response(status_code=204)

@@ -24,13 +24,14 @@ See this [document](https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker#
 
 Additionally, the project uses these environment variables
 ```ini
-DATABASE_URL=prostgres://<username>:<password>@<db server ip>:<db sever port>/<db name>
+DATABASE_URL=postgres://<username>:<password>@<db server ip>:<db sever port>/<db name>
 CLIENT_ID=<discord app client ID>
 CLIENT_SECRET=<discord app client secret>
 AUTH_URI=<discord OAuth2 URL>
 BASE_URL=<base url for the web server>
 # 32 byte = 64 digit hex string
 JWT_SECRET=c78f1d852e2d5adefc2bc54ed256c5b0c031df81aef21a1ae1720e7f72c2d39
+# Only used for test scripts, can be ignores for normal use
 API_TOKEN=<An api token issued by the project, used by the test script>
 ```
 
