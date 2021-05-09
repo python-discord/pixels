@@ -40,23 +40,13 @@ class Canvas:
         """Populate the cache and discard old values."""
         start_time = time()
 
-        transaction = self.redis.multi_exec()
+        cache = bytearray(constants.width * constants.height * 3)
 
         records = await conn.fetch("SELECT x, y, rgb FROM current_pixel ORDER BY x, y")
-        # Iterate every line and store the associated cache line
-        for line in range(constants.height):
-            line_bytes = bytearray(3 * constants.width)
+        for position, record in enumerate(records):
+            cache[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
 
-            # Get the current row from the records
-            for position, record in enumerate(records[line * constants.width:(line + 1) * constants.width]):
-                line_bytes[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
-
-            transaction.set(f"canvas-line-{line}", line_bytes)
-
-        results = await transaction.execute()
-        # Make sure that nothing errored out
-        if not all(results):
-            raise IOError("Error while updating the cache.")
+        await self.redis.set("canvas-cache", cache)
 
         log.info(f"Cache updated finished! (took {time() - start_time}s)")
         await conn.execute("UPDATE cache_state SET last_synced = now()")
@@ -113,10 +103,6 @@ class Canvas:
         """Set the provided pixel."""
         await self.sync_cache(conn)
 
-        # Get the line and update the pixel
-        line = bytearray(await self.redis.get(f"canvas-line-{y}"))
-        line[x * 3:(x + 1) * 3] = bytes.fromhex(rgb)
-
         async with conn.transaction():
             # Insert the pixel into the database
             await conn.execute(
@@ -130,20 +116,11 @@ class Canvas:
             )
 
             # Update the cache
-            await self.redis.set(
-                f"canvas-line-{y}",
-                line
-            )
+            position = (y * constants.width + x) * 3
+            await self.redis.setrange("canvas-cache", position, bytes.fromhex(rgb))
+
             await conn.execute("UPDATE cache_state SET last_synced = now()")
 
     async def get_pixels(self) -> bytearray:
         """Returns the whole board."""
-        buffer = bytearray(constants.width * constants.height * 3)
-
-        # Aggregate every cache line into a unique buffer
-        for line in range(constants.height):
-            buffer[
-                line * 3 * constants.width:(line + 1) * 3 * constants.width
-            ] = await self.redis.get(f"canvas-line-{line}")
-
-        return buffer
+        return await self.redis.get("canvas-cache")
