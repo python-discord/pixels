@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import functools
+import hashlib
 import inspect
 import json
 import logging
@@ -113,8 +114,9 @@ class __BucketBase:
         if not isinstance(func, typing.Callable):
             raise Exception("First parameter of rate limiter must be a function.")
 
-        if func.__name__ not in self.ROUTES:
-            self.ROUTES.append(func.__name__)
+        function_hash = hashlib.md5(inspect.getsource(func).encode("utf8")).hexdigest()
+        if function_hash not in self.ROUTES:
+            self.ROUTES.append(function_hash)
             self.ROUTE_NAME = "|".join(self.ROUTES)
 
         # functools.wraps is used here to wrap the endpoint while maintaining the signature
