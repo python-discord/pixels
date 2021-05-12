@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import datetime
 import functools
+import hashlib
 import inspect
 import json
 import logging
@@ -11,6 +13,7 @@ from dataclasses import dataclass
 
 import asyncpg
 import fastapi
+from aioredis import Redis
 from fastapi.encoders import jsonable_encoder
 
 from pixels import constants
@@ -83,7 +86,7 @@ class __BucketBase:
 
         # Bucket Params
         self.ROUTE_NAME: typing.Optional[str] = None
-        self.ROUTES: typing.List[int] = []
+        self.ROUTES: typing.List[str] = []
         self.BYPASS = bypass
 
         _limits_type = namedtuple("LIMITS", "requests, time_unit, cooldown")
@@ -111,9 +114,10 @@ class __BucketBase:
         if not isinstance(func, typing.Callable):
             raise Exception("First parameter of rate limiter must be a function.")
 
-        if id(func) not in self.ROUTES:
-            self.ROUTES.append(id(func))
-            self.ROUTE_NAME = "|".join([str(route) for route in self.ROUTES])
+        function_hash = hashlib.md5(inspect.getsource(func).encode("utf8")).hexdigest()
+        if function_hash not in self.ROUTES:
+            self.ROUTES.append(function_hash)
+            self.ROUTE_NAME = "|".join(self.ROUTES)
 
         # functools.wraps is used here to wrap the endpoint while maintaining the signature
         @functools.wraps(func)
@@ -138,7 +142,7 @@ class __BucketBase:
 
                 except self.RequestTimeout as e:
                     response = fastapi.Response("You are currently on cooldown. Try again later.", 429)
-                    response.headers.append("X-Remaining-Cooldown", str(e.remaining))
+                    response.headers.append("Cooldown-Reset", str(e.remaining))
 
                 except Exception as e:
                     log.error("Failed to increment rate limiter, falling back to 429.", exc_info=e)
@@ -159,8 +163,9 @@ class __BucketBase:
                     # Subtract one to account for this request.
                     remaining_requests -= 1
 
-                response.headers.append("X-Remaining-Requests", str(remaining_requests))
-
+                response.headers.append("Requests-Remaining", str(remaining_requests))
+                response.headers.append("Requests-Limit", str(self.LIMITS.requests))
+                response.headers.append("Requests-Reset", str(self.LIMITS.time_unit))
             # Setup post interaction tasks
             state = self.state[request_id]
 
@@ -206,7 +211,7 @@ class __BucketBase:
                 remaining = await self.get_remaining_requests(request_id, db_conn) - 1
 
                 # Check if we need to trigger a cooldown
-                if remaining <= 0:
+                if remaining == 0:
                     await self._trigger_cooldown(request_id)
 
                 await self._record_interaction(request_id, db_conn)
@@ -249,6 +254,68 @@ class __BucketBase:
     async def _get_remaining_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> int:
         """Return the time, in seconds, until a cooldown ends."""
         raise NotImplementedError()
+
+
+class UserRedis(__BucketBase):
+    """A per user request bucket backed by Redis."""
+
+    @dataclass
+    class _StateVariables:
+        remaining_requests: typing.Optional[int]
+        clean_up_tasks: typing.List[typing.Callable]
+        user_id: int
+
+    state: typing.Dict[int, _StateVariables]
+
+    def _post_init(self) -> None:
+        self.redis: typing.Optional[Redis] = None
+
+    async def _pre_call(self, _request_id: int, request: fastapi.Request, *args, **kwargs) -> None:
+        request.state.auth.raise_if_failed()
+
+        if not self.redis:
+            try:
+                self.redis = await constants.REDIS_FUTURE
+            except asyncio.InvalidStateError:
+                raise ValueError("Redis connection isn't ready yet.")
+
+    async def _init_state(self, request_id: int, request: fastapi.Request) -> None:
+        self.state.update({
+            request_id: self._StateVariables(
+                remaining_requests=None, clean_up_tasks=[], user_id=request.state.auth.user_id
+            )
+        })
+
+    async def _record_interaction(self, request_id: int, db_conn: asyncpg.Connection) -> None:
+        key = f"interaction-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
+        log.debug(f"Recorded interaction of user {self.state[request_id].user_id} on {self.ROUTE_NAME}.")
+
+        await self.redis.incr(key)
+        await self.redis.expire(key, self.LIMITS.time_unit)
+
+    async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
+        key = f"interaction-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
+
+        remaining = self.LIMITS.requests - int(await self.redis.get(key) or 0)
+
+        log.debug(f"Remaining interactions of user {self.state[request_id].user_id} on {self.ROUTE_NAME}: {remaining}.")
+        return remaining
+
+    async def _trigger_cooldown(self, request_id: int) -> None:
+        key = f"cooldown-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
+
+        log.info(f"Triggering cooldown for user {self.state[request_id].user_id} on {self.ROUTE_NAME}.")
+        await self.redis.set(key, 1, expire=self.LIMITS.cooldown)
+
+    async def _check_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> bool:
+        key = f"cooldown-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
+
+        return self.redis.get(key) == 1
+
+    async def _get_remaining_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> int:
+        key = f"cooldown-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
+
+        return await self.redis.ttl(key)
 
 
 class User(__BucketBase):

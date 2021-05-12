@@ -82,6 +82,7 @@ async def startup() -> None:
     # Make redis_pool global so other endpoints can get access to it.
     global redis_pool
     redis_pool = await aioredis.create_redis_pool(constants.redis_url)
+    constants.REDIS_FUTURE.set_result(redis_pool)
 
     # Start background tasks
     app.state.rate_cleaner = asyncio.create_task(ratelimits.start_cleaner(constants.DB_POOL))
@@ -343,6 +344,7 @@ async def get_size(request: Request) -> dict:
 
 
 @app.get("/get_pixels", tags=["Canvas Endpoints"])
+@ratelimits.UserRedis(requests=5, time_unit=10, cooldown=20)
 async def get_pixels(request: Request) -> Response:
     """
     Get the current state of all pixels from the db.
@@ -355,6 +357,7 @@ async def get_pixels(request: Request) -> Response:
 
 
 @app.post("/set_pixel", tags=["Canvas Endpoints"])
+@ratelimits.UserRedis(requests=1, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=300)
 async def set_pixel(request: Request, pixel: Pixel) -> dict:
     """
     Create a new pixel at the specified position with the specified color.

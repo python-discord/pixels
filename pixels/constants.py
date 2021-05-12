@@ -1,3 +1,4 @@
+import asyncio
 from urllib.parse import unquote
 
 import asyncpg
@@ -31,12 +32,17 @@ max_pool_size = config("MAX_POOL_SIZE", cast=int, default=5)
 
 log_level = config("LOG_LEVEL", default="INFO")
 
+# How many seconds you have to wait before setting another pixel
+PIXEL_RATE_LIMIT = 120
+
 # Awaited in application startup
 DB_POOL = asyncpg.create_pool(
     database_url,
     min_size=min_pool_size,
     max_size=max_pool_size
 )
+# Result set during application startup
+REDIS_FUTURE = asyncio.Future()
 
 with open("pixels/resources/mods.txt") as f:
     mods = f.read().split()
