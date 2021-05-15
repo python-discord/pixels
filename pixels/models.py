@@ -114,3 +114,25 @@ class AuthResult(t.NamedTuple):
     def raise_unless_mod(self) -> None:
         """Raise an HTTPException if a moderator isn't authorized."""
         self.state.raise_unless_mod()
+
+
+class Message(BaseModel):
+    message: str
+
+
+class ModBan(BaseModel):
+    banned: t.List[int]
+    not_found: t.List[int]
+
+
+class PixelHistory(BaseModel):
+    user_id: int
+
+
+class GetSize(BaseModel):
+    width: int
+    height: int
+
+
+class SetPixel(BaseModel):
+    pass
