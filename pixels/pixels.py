@@ -26,12 +26,12 @@ from pixels.canvas import Canvas
 from pixels.models import (
     AuthResult,
     AuthState,
-    Pixel,
-    User,
+    GetSize,
     Message,
     ModBan,
+    Pixel,
     PixelHistory,
-    GetSize,
+    User,
 )
 from pixels.utils import docs, ratelimits
 
