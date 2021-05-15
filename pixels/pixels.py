@@ -374,7 +374,7 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
     return dict(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
 
 
-@app.post("/webhook", tags=["Webhook Endpoints"])
+@app.post("/webhook", tags=["Webhook Endpoints", "Mod Endpoints"])
 async def webhook(request: Request) -> Response:
     """Send or update Discord webhook image."""
     request.state.auth.raise_unless_mod()
