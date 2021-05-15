@@ -32,7 +32,6 @@ from pixels.models import (
     ModBan,
     PixelHistory,
     GetSize,
-    SetPixel,
 )
 from pixels.utils import docs, ratelimits
 

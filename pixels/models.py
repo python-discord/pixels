@@ -132,7 +132,3 @@ class PixelHistory(BaseModel):
 class GetSize(BaseModel):
     width: int
     height: int
-
-
-class SetPixel(BaseModel):
-    pass
