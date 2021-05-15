@@ -117,18 +117,26 @@ class AuthResult(t.NamedTuple):
 
 
 class Message(BaseModel):
+    """An API response message."""
+
     message: str
 
 
 class ModBan(BaseModel):
+    """Users who were banned from the API, or were not found."""
+
     banned: t.List[int]
     not_found: t.List[int]
 
 
 class PixelHistory(BaseModel):
+    """Pixel history for a canvas pixel."""
+
     user_id: int
 
 
 class GetSize(BaseModel):
+    """The size of the pixels canvas."""
+
     width: int
     height: int
