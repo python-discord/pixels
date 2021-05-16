@@ -304,7 +304,10 @@ async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
     return ModBan(**resp)
 
 
-@app.get("/pixel_history", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide, response_model=t.Union[PixelHistory, Message])
+@app.get(
+    "/pixel_history", tags=["Moderation Endpoints"],
+    include_in_schema=constants.prod_hide, response_model=t.Union[PixelHistory, Message]
+)
 async def pixel_history(
         request: Request,
         x: int = constants.x_query_validator,
