@@ -14,8 +14,8 @@ from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from fastapi.openapi.utils import get_openapi
+from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
 from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
@@ -368,7 +368,28 @@ async def authorize() -> Response:
 
 @app.get("/get_size", tags=["Canvas Endpoints"], response_model=GetSize)
 async def get_size(request: Request) -> GetSize:
-    """Get the size of the pixels canvas."""
+    """
+    Get the size of the pixels canvas.
+
+    You can use the data this endpoint returns to build some cool scripts
+    that can start the ducky uprising on the canvas!
+
+    This endpoint doesn't require any authentication so dont worry
+    about giving any headers.
+
+    #### Example Python Script
+    ```py
+    import requests
+
+    r = requests.get("https://pixels.pythondiscord.com/get_size")
+    payload = r.json()
+
+    canvas_height = payload["height"]
+    canvas_width = payload["width"]
+
+    print(f"We got our canvas size! Height: {canvas_height}, Width: {canvas_width.")
+    ```
+    """
     return GetSize(width=constants.width, height=constants.height)
 
 
@@ -388,9 +409,27 @@ async def get_size(request: Request) -> GetSize:
 @ratelimits.UserRedis(requests=5, time_unit=10, cooldown=20)
 async def get_pixels(request: Request) -> Response:
     """
-    Get the current state of all pixels from the db.
+    Get the current state of all pixels from the database.
 
-    Requires a valid token in an Authorization header.
+    This endpoint requires an authentication token. See [the overview](/#overview)
+    for how to authenticate with the API.
+
+    #### Example Python Script
+    ```py
+    from dotenv import load_dotenv
+    from os import getenv
+    import requests
+
+    load_dotenv(".env")
+
+    token = getenv("TOKEN")
+
+    headers = {"Authorization": f"Bearer {token}"}
+    r = requests.get("https://pixels.pythondiscord.com/get_pixels", headers=headers)
+    data = r.content
+
+    # have fun processing the returned data...
+    ```
     """
     request.state.auth.raise_if_failed()
     # The cast to bytes here is needed by FastAPI ¯\_(ツ)_/¯
@@ -402,13 +441,37 @@ async def get_pixels(request: Request) -> Response:
 @ratelimits.UserRedis(requests=1, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=300)
 async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
-    Create a new pixel at the specified position with the specified color.
+    Create a new pixel at the specified position with the specified color,
+    you can override any pixel that's at the given position.
 
-    Override any pixel already at the same position.
+    This endpoint requires an authentication token. See [the overview](/#overview)
+    for how to authenticate with the API.
 
-    Requires a valid token in an Authorization header.
+    #### Example Python Script
+    ```py
+    from dotenv import load_dotenv
+    from os import getenv
+    import requests
 
-    missing Ratelimit
+    load_dotenv(".env")
+
+    token = getenv("TOKEN")
+
+    headers = {"Authorization": f"Bearer {token}"}
+    data = {
+      "x": 80,
+      "y": 45,
+      "rgb": "00FF00"
+    }
+    r = requests.post(  # remember, this is a POST method not a GET method.
+        "https://pixels.pythondiscord.com/set_pixel",
+        json=data,
+        headers=headers,
+    )
+    payload = r.json()
+
+    print(f"We got a message back! {payload['message']}")
+    ```
     """
     request.state.auth.raise_if_failed()
     log.info(f"{request.state.auth.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
