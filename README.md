@@ -34,6 +34,7 @@ BASE_URL=<base url for the web server>
 JWT_SECRET=c78f1d852e2d5adefc2bc54ed256c5b0c031df81aef21a1ae1720e7f72c2d39
 # Only used for test scripts, can be ignores for normal use
 API_TOKEN=<An api token issued by the project, used by the test script>
+PRODUCTION=<'true' or 'false', this hides mod endpoints in redoc>
 ```
 
 To setup your discord application go to https://discord.com/developers/applications/ and create a new application.

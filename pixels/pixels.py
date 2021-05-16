@@ -264,14 +264,14 @@ async def docs(request: Request) -> Response:
     return templates.TemplateResponse(template_name, {"request": request})
 
 
-@app.get("/mod", tags=["Moderation Endpoints"], response_model=Message)
+@app.get("/mod", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide, response_model=Message)
 async def mod_check(request: Request) -> Message:
     """Check if the authenticated user is a mod."""
     request.state.auth.raise_unless_mod()
     return Message(message="Hello fellow moderator!")
 
 
-@app.post("/set_mod", tags=["Moderation Endpoints"], response_model=Message)
+@app.post("/set_mod", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide, response_model=Message)
 async def set_mod(request: Request, user: User) -> Message:
     """Make another user a mod."""
     user_id = user.user_id
@@ -295,7 +295,7 @@ async def set_mod(request: Request, user: User) -> Message:
     return Message(message=f"Successfully set user with user_id {user_id} to mod")
 
 
-@app.post("/mod_ban", tags=["Moderation Endpoints"], response_model=ModBan)
+@app.post("/mod_ban", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide, response_model=ModBan)
 async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
     """Ban users from using the API."""
     request.state.auth.raise_unless_mod()
@@ -325,8 +325,10 @@ async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
     return ModBan(**resp)
 
 
-@app.get("/pixel_history", tags=["Moderation Endpoints"],
-         response_model=t.Union[PixelHistory, Message])
+@app.get(
+    "/pixel_history", tags=["Moderation Endpoints"],
+    include_in_schema=constants.prod_hide, response_model=t.Union[PixelHistory, Message]
+)
 async def pixel_history(
         request: Request,
         x: int = constants.x_query_validator,
@@ -480,7 +482,7 @@ async def set_pixel(request: Request, pixel: Pixel) -> Message:
     return Message(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
 
 
-@app.post("/webhook", tags=["Moderation Endpoints"], response_model=Message)
+@app.post("/webhook", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide, response_model=Message)
 async def webhook(request: Request) -> Message:
     """Send or update Discord webhook image."""
     request.state.auth.raise_unless_mod()
