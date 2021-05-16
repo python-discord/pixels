@@ -236,7 +236,7 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 
 
 # ENDPOINTS
-@app.get("/", tags=["General Endpoints"])
+@app.get("/", tags=["General Endpoints"], include_in_schema=False)
 async def docs(request: Request) -> Response:
     """Return the API docs."""
     template_name = "docs.html"
@@ -334,7 +334,7 @@ async def pixel_history(
     return PixelHistory(user_id=user_id)
 
 
-@app.get("/authorize", tags=["Authorization Endpoints"])
+@app.get("/authorize", tags=["Authorization Endpoints"], include_in_schema=False)
 async def authorize() -> Response:
     """
     Redirect the user to discord authorization, the flow continues in /callback.
@@ -381,7 +381,7 @@ async def set_pixel(request: Request, pixel: Pixel) -> Message:
     return Message(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
 
 
-@app.post("/webhook", tags=["Moderation Endpoints"], response_model=Message)
+@app.post("/webhook", tags=["Webhook Endpoints", "Mod Endpoints"], response_model=Message)
 async def webhook(request: Request) -> Message:
     """Send or update Discord webhook image."""
     request.state.auth.raise_unless_mod()
