@@ -236,7 +236,7 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 
 
 # ENDPOINTS
-@app.get("/", tags=["General Endpoints"])
+@app.get("/", tags=["General Endpoints"], include_in_schema=False)
 async def docs(request: Request) -> Response:
     """Return the API docs."""
     template_name = "docs.html"
@@ -334,7 +334,7 @@ async def pixel_history(
     return PixelHistory(user_id=user_id)
 
 
-@app.get("/authorize", tags=["Authorization Endpoints"])
+@app.get("/authorize", tags=["Authorization Endpoints"], include_in_schema=False)
 async def authorize() -> Response:
     """
     Redirect the user to discord authorization, the flow continues in /callback.
