@@ -73,7 +73,7 @@ class AuthState(enum.Enum):
         "or navigate to /authorize to get one"
     )
     BAD_HEADER = "The Authorization header does not specify the Bearer scheme."
-    INVALID_TOKEN = "The token provided is not a valid token, navigate to /authorize to get a new one."
+    INVALID_TOKEN = "The token provided is not a valid token or has expired, navigate to /authorize to get a new one."
     BANNED = "You are banned."
     MODERATOR = "This token belongs to a moderator"
     USER = "This token belongs to a regular user"

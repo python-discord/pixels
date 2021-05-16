@@ -189,9 +189,9 @@ async def authorized(conn: Connection, authorization: t.Optional[str]) -> AuthRe
         user_id = token_data["id"]
         token_salt = token_data["salt"]
         user_state = await conn.fetchrow(
-            "SELECT is_banned, is_mod FROM users WHERE user_id = $1 AND key_salt = $2;", int(user_id), token_salt,
+            "SELECT is_banned, is_mod, key_salt FROM users WHERE user_id = $1;", int(user_id),
         )
-        if user_state is None:
+        if user_state is None or user_state["key_salt"] != token_salt:
             return AuthResult(AuthState.INVALID_TOKEN, None)
         elif user_state["is_banned"]:
             return AuthResult(AuthState.BANNED, int(user_id))
