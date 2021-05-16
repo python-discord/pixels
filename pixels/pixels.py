@@ -350,7 +350,19 @@ async def get_size(request: Request) -> GetSize:
     return GetSize(width=constants.width, height=constants.height)
 
 
-@app.get("/get_pixels", tags=["Canvas Endpoints"])
+@app.get("/get_pixels", tags=["Canvas Endpoints"], response_class=Response, responses={
+    200: {
+        "description": "Successful Response.",
+        "content": {
+            "application/octet-stream": {
+                "schema": {
+                    "type": "application/octet-stream",
+                    "format": "binary"
+                }
+            }
+        }
+    }
+})
 @ratelimits.UserRedis(requests=5, time_unit=10, cooldown=20)
 async def get_pixels(request: Request) -> Response:
     """
