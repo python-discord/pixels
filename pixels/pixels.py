@@ -23,7 +23,16 @@ from starlette.responses import RedirectResponse
 
 from pixels import constants
 from pixels.canvas import Canvas
-from pixels.models import AuthResult, AuthState, Pixel, User
+from pixels.models import (
+    AuthResult,
+    AuthState,
+    GetSize,
+    Message,
+    ModBan,
+    Pixel,
+    PixelHistory,
+    User,
+)
 from pixels.utils import docs, ratelimits
 
 log = logging.getLogger(__name__)
@@ -234,15 +243,15 @@ async def docs(request: Request) -> Response:
     return templates.TemplateResponse(template_name, {"request": request})
 
 
-@app.get("/mod", tags=["Moderation Endpoints"])
-async def mod_check(request: Request) -> dict:
+@app.get("/mod", tags=["Moderation Endpoints"], response_model=Message)
+async def mod_check(request: Request) -> Message:
     """Check if the authenticated user is a mod."""
     request.state.auth.raise_unless_mod()
-    return {"Message": "Hello fellow moderator!"}
+    return Message(message="Hello fellow moderator!")
 
 
-@app.post("/set_mod", tags=["Moderation Endpoints"])
-async def set_mod(request: Request, user: User) -> dict:
+@app.post("/set_mod", tags=["Moderation Endpoints"], response_model=Message)
+async def set_mod(request: Request, user: User) -> Message:
     """Make another user a mod."""
     user_id = user.user_id
     request.state.auth.raise_unless_mod()
@@ -252,9 +261,9 @@ async def set_mod(request: Request, user: User) -> dict:
             "SELECT is_mod FROM users WHERE user_id = $1;", user_id,
         )
         if user_state is None:
-            return {"Message": f"User with user_id {user_id} does not exist."}
+            return Message(message=f"User with user_id {user_id} does not exist.")
         elif user_state['is_mod']:
-            return {"Message": f"User with user_id {user_id} is already a mod."}
+            return Message(message=f"User with user_id {user_id} is already a mod.")
 
         await conn.execute(
             """
@@ -262,11 +271,11 @@ async def set_mod(request: Request, user: User) -> dict:
         """,
             user_id,
         )
-    return {"Message": f"Successfully set user with user_id {user_id} to mod"}
+    return Message(message=f"Successfully set user with user_id {user_id} to mod")
 
 
-@app.post("/mod_ban", tags=["Moderation Endpoints"])
-async def ban_users(request: Request, user_list: t.List[User]) -> dict:
+@app.post("/mod_ban", tags=["Moderation Endpoints"], response_model=ModBan)
+async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
     """Ban users from using the API."""
     request.state.auth.raise_unless_mod()
 
@@ -288,19 +297,19 @@ async def ban_users(request: Request, user_list: t.List[User]) -> dict:
         sql, db_users
     )
 
-    resp = {"Banned": db_users}
+    resp = {"banned": db_users, "not_found": []}
     if non_db_users:
-        resp["Not Found"] = non_db_users
+        resp["not_found"] = list(non_db_users)
 
-    return resp
+    return ModBan(**resp)
 
 
-@app.get("/pixel_history", tags=["Moderation Endpoints"])
+@app.get("/pixel_history", tags=["Moderation Endpoints"], response_model=t.Union[PixelHistory, Message])
 async def pixel_history(
         request: Request,
         x: int = constants.x_query_validator,
         y: int = constants.y_query_validator
-) -> dict:
+) -> t.Union[PixelHistory, Message]:
     """GET the user who edited the pixel with the given co-ordinates."""
     request.state.auth.raise_unless_mod()
 
@@ -318,13 +327,11 @@ async def pixel_history(
     record = await conn.fetchrow(sql, x, y)
 
     if not record:
-        return {"Message": f"No user history for pixel ({x}, {y})"}
+        return Message(message=f"No user history for pixel ({x}, {y})")
 
     user_id = record["user_id"]
 
-    return {
-        "user_id": user_id
-    }
+    return PixelHistory(user_id=user_id)
 
 
 @app.get("/authorize", tags=["Authorization Endpoints"])
@@ -337,10 +344,10 @@ async def authorize() -> Response:
     return RedirectResponse(url=constants.auth_uri)
 
 
-@app.get("/get_size", tags=["Canvas Endpoints"])
-async def get_size(request: Request) -> dict:
+@app.get("/get_size", tags=["Canvas Endpoints"], response_model=GetSize)
+async def get_size(request: Request) -> GetSize:
     """Get the size of the pixels canvas."""
-    return dict(width=constants.width, height=constants.height)
+    return GetSize(width=constants.width, height=constants.height)
 
 
 @app.get("/get_pixels", tags=["Canvas Endpoints"])
@@ -356,9 +363,9 @@ async def get_pixels(request: Request) -> Response:
     return Response(bytes(await request.state.canvas.get_pixels()), media_type="application/octet-stream")
 
 
-@app.post("/set_pixel", tags=["Canvas Endpoints"])
+@app.post("/set_pixel", tags=["Canvas Endpoints"], response_model=Message)
 @ratelimits.UserRedis(requests=1, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=300)
-async def set_pixel(request: Request, pixel: Pixel) -> dict:
+async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
     Create a new pixel at the specified position with the specified color.
 
@@ -371,11 +378,11 @@ async def set_pixel(request: Request, pixel: Pixel) -> dict:
     request.state.auth.raise_if_failed()
     log.info(f"{request.state.auth.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
     await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
-    return dict(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
+    return Message(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
 
 
-@app.post("/webhook", tags=["Webhook Endpoints"])
-async def webhook(request: Request) -> Response:
+@app.post("/webhook", tags=["Moderation Endpoints"], response_model=Message)
+async def webhook(request: Request) -> Message:
     """Send or update Discord webhook image."""
     request.state.auth.raise_unless_mod()
 
@@ -457,4 +464,4 @@ async def webhook(request: Request) -> Response:
 
             await redis_pool.set("last-webhook-message", create_resp["id"])
 
-    return Response(status_code=204)
+    return Message(message="Webhook posted successfully.")
