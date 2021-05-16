@@ -381,8 +381,8 @@ async def set_pixel(request: Request, pixel: Pixel) -> Message:
     return Message(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
 
 
-@app.post("/webhook", tags=["Webhook Endpoints", "Mod Endpoints"])
-async def webhook(request: Request) -> Response:
+@app.post("/webhook", tags=["Webhook Endpoints", "Mod Endpoints"], response_model=Message)
+async def webhook(request: Request) -> Message:
     """Send or update Discord webhook image."""
     request.state.auth.raise_unless_mod()
 
@@ -464,4 +464,4 @@ async def webhook(request: Request) -> Response:
 
             await redis_pool.set("last-webhook-message", create_resp["id"])
 
-    return Response(status_code=204)
+    return Message(message="Webhook posted successfully.")
