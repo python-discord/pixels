@@ -4,6 +4,17 @@
 {% block head %}
     <meta charset="utf-8"> <!-- Important: rapi-doc uses utf8 charecters -->
     <script type="module" src="https://unpkg.com/rapidoc/dist/rapidoc-min.js"></script>
+    <style>
+    :root {
+        --tip-red: #b70627;
+        --dark-bg: #090E14;
+    }
+    rapi-doc::part(section-navbar) { /* <<< targets navigation bar */
+        box-shadow: 3px 0px 3px -1px rgba(0,0,0,0.75);
+        -webkit-box-shadow: 3px 0px 3px -1px rgba(0,0,0,0.75);
+        -moz-box-shadow: 3px 0px 3px -1px rgba(0,0,0,0.75);
+    }
+    </style>
 {% endblock %}
 {% block content %}
     <rapi-doc
@@ -20,9 +31,6 @@
         nav-hover-text-color=""
         nav-accent-color="#7289DA"
         primary-color="#7289DA"
-        api-key-name="Authorization"
-        api-key-location="header"
-        api-key-value="My API key here"
         sort-tags="true"
         >
         <div slot="nav-logo" style="display: flex; align-items: center; justify-content: center;">
@@ -31,6 +39,13 @@
                 <b>Python Discord</b>
                 Pixels
             </span>
+        </div>
+        <div slot="auth">
+            <div style="padding: 1rem;margin-top: 2rem;margin-bottom: 2rem;border: 0 solid var(--tip-red);border-left-width: 4px;background: var(--dark-bg);border-radius: 1px">
+                <span style="color: white;font-weight: bold;">
+                    TIP: You can use this tool to test out some of the endpoints right inside of the docs! Why not give it a spin?
+                </span>
+            </div>
         </div>
     </rapi-doc>
 {% endblock %}

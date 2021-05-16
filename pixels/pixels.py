@@ -15,6 +15,7 @@ from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.openapi.utils import get_openapi
 from httpx import AsyncClient
 from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
@@ -33,14 +34,11 @@ from pixels.models import (
     PixelHistory,
     User,
 )
-from pixels.utils import docs, ratelimits
+from pixels.utils import docs_loader, ratelimits
 
 log = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Pixels API",
-    description=docs.get_doc("overview"),
-    version="0.0.1",
     docs_url=None,
     redoc_url=None,
 )
@@ -55,6 +53,28 @@ canvas: t.Optional[Canvas] = None
 
 # Global Redis pool reference
 redis_pool: t.Optional[aioredis.Redis] = None
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="Pixels API",
+        description=docs_loader.get_doc("overview"),
+        version="0.0.1",
+        routes=app.routes,
+    )
+    openapi_schema["components"]["securitySchemes"] = {
+        "Bearer": {
+            "type": "http",
+            "scheme": "Bearer"
+        }
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -145,7 +165,8 @@ async def auth_callback(request: Request) -> Response:
     try:
         async with AsyncClient() as client:
             token_params, token_headers = build_oauth_token_request(code)
-            token = (await client.post(constants.token_url, data=token_params, headers=token_headers)).json()
+            token = (await client.post(constants.token_url, data=token_params,
+                                       headers=token_headers)).json()
             auth_header = {"Authorization": f"Bearer {token['access_token']}"}
             user = (await client.get(constants.user_url, headers=auth_header)).json()
             token = await reset_user_token(request.state.db_conn, user["id"])
@@ -287,7 +308,7 @@ async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
     records = await conn.fetch(sql, tuple(users))
     db_users = [record["user_id"] for record in records]
 
-    non_db_users = set(users)-set(db_users)
+    non_db_users = set(users) - set(db_users)
 
     # Ref:
     # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
@@ -304,7 +325,8 @@ async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
     return ModBan(**resp)
 
 
-@app.get("/pixel_history", tags=["Moderation Endpoints"], response_model=t.Union[PixelHistory, Message])
+@app.get("/pixel_history", tags=["Moderation Endpoints"],
+         response_model=t.Union[PixelHistory, Message])
 async def pixel_history(
         request: Request,
         x: int = constants.x_query_validator,
@@ -372,7 +394,8 @@ async def get_pixels(request: Request) -> Response:
     """
     request.state.auth.raise_if_failed()
     # The cast to bytes here is needed by FastAPI ¯\_(ツ)_/¯
-    return Response(bytes(await request.state.canvas.get_pixels()), media_type="application/octet-stream")
+    return Response(bytes(await request.state.canvas.get_pixels()),
+                    media_type="application/octet-stream")
 
 
 @app.post("/set_pixel", tags=["Canvas Endpoints"], response_model=Message)
@@ -389,7 +412,8 @@ async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
     request.state.auth.raise_if_failed()
     log.info(f"{request.state.auth.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
-    await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
+    await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb,
+                                         request.state.auth.user_id)
     return Message(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
 
 
