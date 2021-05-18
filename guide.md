@@ -12,7 +12,7 @@ A large asset to you while making API requests will be the [requests library doc
 
 ## Authenticating with the API
 
-API authentication is done using a bearer token in the `Authorization` header of requests made to the API. To obtain a bearer token for yourself, head to https://pixels.pythondiscord.com/authorization and follow the Discord OAuth flow.
+API authentication is done using a bearer token in the `Authorization` header of requests made to the API. To obtain a bearer token for yourself, head to https://pixels.pythondiscord.com/authorize and follow the Discord OAuth flow.
 
 Next, you'll want to keep that token safe in your preferred way of storing secrets. If you haven't dealt with storing secrets before you can utilise the widely used `.env` format.
 
