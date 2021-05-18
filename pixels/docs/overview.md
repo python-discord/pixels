@@ -1,4 +1,4 @@
-<h1 style="color: var(--burple);font-weight: 600;">A couple of prerequisites:</h1>
+<h2 style="color: var(--burple);font-weight: 600;">A couple of prerequisites:</h2>
 
 - The current API base location is at `https://pixels.pythondiscord.com`
 - You will need the `requests` and `python-dotenv` modules to follow this guide.
@@ -7,7 +7,7 @@
 
 A large asset to you while making API requests will be the [requests library documentation](https://docs.python-requests.org/en/master/).
 
-<h1 style="color: var(--burple);font-weight: 600;">Authenticating with the API</h1>
+<h2 style="color: var(--burple);font-weight: 600;">Authenticating with the API</h2>
 
 API authentication is done using a bearer token in the `Authorization` header of requests made to the API. To obtain a bearer token for yourself, head to https://pixels.pythondiscord.com/authorize and follow the Discord OAuth flow.
 
@@ -32,7 +32,7 @@ token = getenv("TOKEN")
 
 Note: you will need the `python-dotenv` (`pip install python-dotenv`) module installed so that you can use `load_dotenv`.
 
-<h1 style="color: var(--burple);font-weight: 600;">Making a request</h1>
+<h2 style="color: var(--burple);font-weight: 600;">Making a request</h2>
 
 For this example we'll use the `/set_pixel` endpoint to set a specific pixel on the canvas. Firstly we want to import our HTTP library, for now we'll use the `requests` (`pip install requests`) library.
 

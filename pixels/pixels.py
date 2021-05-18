@@ -12,9 +12,9 @@ import aioredis
 from PIL import Image
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
+from fastapi.openapi.utils import get_openapi
 from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.staticfiles import StaticFiles
-from fastapi.openapi.utils import get_openapi
 from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
 from itsdangerous import URLSafeSerializer
@@ -55,7 +55,8 @@ canvas: t.Optional[Canvas] = None
 redis_pool: t.Optional[aioredis.Redis] = None
 
 
-def custom_openapi():
+def custom_openapi() -> t.Dict[str, t.Any]:
+    """Creates a custom OpenAPI schema."""
     if app.openapi_schema:
         return app.openapi_schema
     openapi_schema = get_openapi(
@@ -165,8 +166,7 @@ async def auth_callback(request: Request) -> Response:
     try:
         async with AsyncClient() as client:
             token_params, token_headers = build_oauth_token_request(code)
-            token = (await client.post(constants.token_url, data=token_params,
-                                       headers=token_headers)).json()
+            token = (await client.post(constants.token_url, data=token_params, headers=token_headers)).json()
             auth_header = {"Authorization": f"Bearer {token['access_token']}"}
             user = (await client.get(constants.user_url, headers=auth_header)).json()
             token = await reset_user_token(request.state.db_conn, user["id"])
@@ -326,8 +326,10 @@ async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
 
 
 @app.get(
-    "/pixel_history", tags=["Moderation Endpoints"],
-    include_in_schema=constants.prod_hide, response_model=t.Union[PixelHistory, Message]
+    "/pixel_history",
+    tags=["Moderation Endpoints"],
+    include_in_schema=constants.prod_hide,
+    response_model=t.Union[PixelHistory, Message]
 )
 async def pixel_history(
         request: Request,
@@ -443,8 +445,7 @@ async def get_pixels(request: Request) -> Response:
 @ratelimits.UserRedis(requests=1, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=300)
 async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
-    Create a new pixel at the specified position with the specified color,
-    you can override any pixel that's at the given position.
+    Override the pixel at the specified position with the specified color.
 
     This endpoint requires an authentication token. See [the overview](/#overview)
     for how to authenticate with the API.
@@ -477,8 +478,7 @@ async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
     request.state.auth.raise_if_failed()
     log.info(f"{request.state.auth.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
-    await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb,
-                                         request.state.auth.user_id)
+    await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
     return Message(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
 
 
