@@ -12,6 +12,7 @@ import aioredis
 from PIL import Image
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
+from fastapi.openapi.utils import get_openapi
 from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -33,14 +34,11 @@ from pixels.models import (
     PixelHistory,
     User,
 )
-from pixels.utils import docs, ratelimits
+from pixels.utils import docs_loader, ratelimits
 
 log = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Pixels API",
-    description=docs.get_doc("overview"),
-    version="0.0.1",
     docs_url=None,
     redoc_url=None,
 )
@@ -55,6 +53,29 @@ canvas: t.Optional[Canvas] = None
 
 # Global Redis pool reference
 redis_pool: t.Optional[aioredis.Redis] = None
+
+
+def custom_openapi() -> t.Dict[str, t.Any]:
+    """Creates a custom OpenAPI schema."""
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="Pixels API",
+        description=docs_loader.get_doc("overview"),
+        version="0.0.1",
+        routes=app.routes,
+    )
+    openapi_schema["components"]["securitySchemes"] = {
+        "Bearer": {
+            "type": "http",
+            "scheme": "Bearer"
+        }
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -287,7 +308,7 @@ async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
     records = await conn.fetch(sql, tuple(users))
     db_users = [record["user_id"] for record in records]
 
-    non_db_users = set(users)-set(db_users)
+    non_db_users = set(users) - set(db_users)
 
     # Ref:
     # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
@@ -305,8 +326,10 @@ async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
 
 
 @app.get(
-    "/pixel_history", tags=["Moderation Endpoints"],
-    include_in_schema=constants.prod_hide, response_model=t.Union[PixelHistory, Message]
+    "/pixel_history",
+    tags=["Moderation Endpoints"],
+    include_in_schema=constants.prod_hide,
+    response_model=t.Union[PixelHistory, Message]
 )
 async def pixel_history(
         request: Request,
@@ -349,7 +372,28 @@ async def authorize() -> Response:
 
 @app.get("/get_size", tags=["Canvas Endpoints"], response_model=GetSize)
 async def get_size(request: Request) -> GetSize:
-    """Get the size of the pixels canvas."""
+    """
+    Get the size of the pixels canvas.
+
+    You can use the data this endpoint returns to build some cool scripts
+    that can start the ducky uprising on the canvas!
+
+    This endpoint doesn't require any authentication so dont worry
+    about giving any headers.
+
+    #### Example Python Script
+    ```py
+    import requests
+
+    r = requests.get("https://pixels.pythondiscord.com/get_size")
+    payload = r.json()
+
+    canvas_height = payload["height"]
+    canvas_width = payload["width"]
+
+    print(f"We got our canvas size! Height: {canvas_height}, Width: {canvas_width.")
+    ```
+    """
     return GetSize(width=constants.width, height=constants.height)
 
 
@@ -369,26 +413,68 @@ async def get_size(request: Request) -> GetSize:
 @ratelimits.UserRedis(requests=5, time_unit=10, cooldown=20)
 async def get_pixels(request: Request) -> Response:
     """
-    Get the current state of all pixels from the db.
+    Get the current state of all pixels from the database.
 
-    Requires a valid token in an Authorization header.
+    This endpoint requires an authentication token. See [the overview](/#overview)
+    for how to authenticate with the API.
+
+    #### Example Python Script
+    ```py
+    from dotenv import load_dotenv
+    from os import getenv
+    import requests
+
+    load_dotenv(".env")
+
+    token = getenv("TOKEN")
+
+    headers = {"Authorization": f"Bearer {token}"}
+    r = requests.get("https://pixels.pythondiscord.com/get_pixels", headers=headers)
+    data = r.content
+
+    # have fun processing the returned data...
+    ```
     """
     request.state.auth.raise_if_failed()
     # The cast to bytes here is needed by FastAPI ¯\_(ツ)_/¯
-    return Response(bytes(await request.state.canvas.get_pixels()), media_type="application/octet-stream")
+    return Response(bytes(await request.state.canvas.get_pixels()),
+                    media_type="application/octet-stream")
 
 
 @app.post("/set_pixel", tags=["Canvas Endpoints"], response_model=Message)
 @ratelimits.UserRedis(requests=1, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=300)
 async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
-    Create a new pixel at the specified position with the specified color.
+    Override the pixel at the specified position with the specified color.
 
-    Override any pixel already at the same position.
+    This endpoint requires an authentication token. See [the overview](/#overview)
+    for how to authenticate with the API.
 
-    Requires a valid token in an Authorization header.
+    #### Example Python Script
+    ```py
+    from dotenv import load_dotenv
+    from os import getenv
+    import requests
 
-    missing Ratelimit
+    load_dotenv(".env")
+
+    token = getenv("TOKEN")
+
+    headers = {"Authorization": f"Bearer {token}"}
+    data = {
+      "x": 80,
+      "y": 45,
+      "rgb": "00FF00"
+    }
+    r = requests.post(  # remember, this is a POST method not a GET method.
+        "https://pixels.pythondiscord.com/set_pixel",
+        json=data,
+        headers=headers,
+    )
+    payload = r.json()
+
+    print(f"We got a message back! {payload['message']}")
+    ```
     """
     request.state.auth.raise_if_failed()
     log.info(f"{request.state.auth.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
