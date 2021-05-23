@@ -114,9 +114,6 @@ async def startup() -> None:
     redis_pool = await aioredis.create_redis_pool(constants.redis_url)
     constants.REDIS_FUTURE.set_result(redis_pool)
 
-    # Start background tasks
-    app.state.rate_cleaner = asyncio.create_task(ratelimits.start_cleaner(constants.DB_POOL))
-
     canvas = Canvas(redis_pool)  # Global
     await canvas.sync_cache(await constants.DB_POOL.acquire())
 
@@ -442,7 +439,7 @@ async def get_pixels(request: Request) -> Response:
 
 
 @app.post("/set_pixel", tags=["Canvas Endpoints"], response_model=Message)
-@ratelimits.UserRedis(requests=1, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=300)
+@ratelimits.UserRedis(requests=1, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=constants.PIXEL_RATE_LIMIT * 2)
 async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
     Override the pixel at the specified position with the specified color.

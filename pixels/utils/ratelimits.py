@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import datetime
 import functools
 import hashlib
 import inspect
@@ -11,29 +10,13 @@ import typing
 from collections import namedtuple
 from dataclasses import dataclass
 
-import asyncpg
 import fastapi
 from aioredis import Redis
 from fastapi.encoders import jsonable_encoder
 
 from pixels import constants
-from pixels.utils import database
 
 log = logging.getLogger(__name__)
-
-
-async def start_cleaner(db_pool: asyncpg.Pool) -> None:
-    """Do periodic checks on the DB, and clean up expired rate limit entries."""
-    cleanup_statement = (
-        """
-            DELETE FROM rate_limits WHERE (expiration < $1);
-        """,
-        datetime.datetime.now
-    )
-    failure_message = "Rate limit cleaner failed. Restarting."
-
-    # Run the cleanup every 5 minutes
-    await database.periodic_task(db_pool, 5 * 60, failure_message, *cleanup_statement)
 
 
 class __BucketBase:
@@ -56,7 +39,7 @@ class __BucketBase:
 
     _STATE = typing.Dict[int, _StateVariables]
 
-    class RequestTimeout(BaseException):
+    class OnCooldown(BaseException):
         """An exception class to provide information on the current timeout."""
 
         def __init__(self, remaining: float, *args):
@@ -110,17 +93,17 @@ class __BucketBase:
 
     def __call__(self, *args):
         """Wrap the route in a custom caller, and pass it to the route manager."""
-        func: typing.Callable = args[0]
-        if not isinstance(func, typing.Callable):
+        route_callback: typing.Callable = args[0]
+        if not isinstance(route_callback, typing.Callable):
             raise Exception("First parameter of rate limiter must be a function.")
 
-        function_hash = hashlib.md5(inspect.getsource(func).encode("utf8")).hexdigest()
+        function_hash = hashlib.md5(inspect.getsource(route_callback).encode("utf8")).hexdigest()
         if function_hash not in self.ROUTES:
             self.ROUTES.append(function_hash)
             self.ROUTE_NAME = "|".join(self.ROUTES)
 
         # functools.wraps is used here to wrap the endpoint while maintaining the signature
-        @functools.wraps(func)
+        @functools.wraps(route_callback)
         async def caller(*_args, **_kwargs) -> fastapi.Response:
             # Instantiate request attributes
             request_id = self.request_id
@@ -132,24 +115,30 @@ class __BucketBase:
             await self._pre_call(*_args, _request_id=request_id, **_kwargs)
             await self._init_state(request_id, request)
 
-            db_conn = request.state.db_conn
-
             # Try to skip rate limit checks
             bypass = await self.BYPASS() if inspect.iscoroutinefunction(self.BYPASS) else self.BYPASS()
             if not bypass:
                 try:
-                    await self._increment(request_id, db_conn)
+                    await self._increment(request_id)
 
-                except self.RequestTimeout as e:
-                    response = fastapi.Response("You are currently on cooldown. Try again later.", 429)
+                except self.OnCooldown as e:
+                    response = fastapi.Response(
+                        json.dumps({"message": "You are currently on cooldown. Try again later."}),
+                        429
+                    )
                     response.headers.append("Cooldown-Reset", str(e.remaining))
 
                 except Exception as e:
-                    log.error("Failed to increment rate limiter, falling back to 429.", exc_info=e)
-                    response = fastapi.Response("Unknown error occurred, please contact staff.", 429)
+                    log.error("Failed to increment rate limiter, falling back to 500.", exc_info=e)
+                    response = fastapi.Response(
+                        json.dumps({"message": "Unknown error occurred, please contact staff."}),
+                        500
+                    )
 
+            # If we don't have a preformatted response because of an error or cooldown,
+            # we run the route base function
             if not response:
-                result = await func(*_args, **_kwargs)
+                result = await route_callback(*_args, **_kwargs)
 
                 if isinstance(result, fastapi.Response):
                     response = result
@@ -157,20 +146,16 @@ class __BucketBase:
                     clean_result = jsonable_encoder(result)
                     response = fastapi.Response(json.dumps(clean_result, indent=4))
 
-                remaining_requests = await self.get_remaining_requests(request_id, db_conn)
-
-                if self.COUNT_FAILED or str(response.status_code)[0] != "4":
-                    # Subtract one to account for this request.
-                    remaining_requests -= 1
+                remaining_requests = await self.get_remaining_requests(request_id)
 
                 response.headers.append("Requests-Remaining", str(remaining_requests))
                 response.headers.append("Requests-Limit", str(self.LIMITS.requests))
                 response.headers.append("Requests-Reset", str(self.LIMITS.time_unit))
+
             # Setup post interaction tasks
             state = self.state[request_id]
 
             tasks = response.background or fastapi.BackgroundTasks()
-            tasks.add_task(self.record_interaction, request_id=request_id, response_code=response.status_code)
 
             for task in state.clean_up_tasks:
                 tasks.add_task(task)
@@ -184,58 +169,33 @@ class __BucketBase:
 
         return caller
 
-    async def _increment(self, request_id: int, db_conn: asyncpg.Connection) -> None:
+    async def _increment(self, request_id: int) -> None:
         """Reduce remaining quota, and check if a cooldown is needed."""
-        cooldown = await self._check_cooldown(request_id, db_conn)
+        if await self._check_cooldown(request_id):
+            raise self.OnCooldown(await self._get_remaining_cooldown(request_id))
 
-        if cooldown or await self.get_remaining_requests(request_id, db_conn) <= 0:
-            raise self.RequestTimeout(await self._get_remaining_cooldown(request_id, db_conn))
+        await self._record_interaction(request_id)
+
+        if await self.get_remaining_requests(request_id) < 0:
+            await self._trigger_cooldown(request_id)
+            raise self.OnCooldown(await self._get_remaining_cooldown(request_id))
         else:
             return
 
-    async def get_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
+    async def get_remaining_requests(self, request_id: int) -> int:
         """Return the number of remaining requests. Logic wrapper for _remaining_getter."""
         state = self.state[request_id]
 
         # Skip call if it is already known for this request.
         if state.remaining_requests is None:
-            state.remaining_requests = await self._calculate_remaining_requests(request_id, db_conn)
+            state.remaining_requests = await self._calculate_remaining_requests(request_id)
         return state.remaining_requests
 
-    async def record_interaction(self, request_id: int, response_code: int) -> None:
-        """Record the current interaction in the database."""
-        async with constants.DB_POOL.acquire() as db_conn:
-            success = str(response_code)[0] != "4"
-
-            if success or self.COUNT_FAILED:
-                remaining = await self.get_remaining_requests(request_id, db_conn) - 1
-
-                # Check if we need to trigger a cooldown
-                if remaining == 0:
-                    await self._trigger_cooldown(request_id)
-
-                await self._record_interaction(request_id, db_conn)
-
-    async def _clear_rate_limits(self, request_id: int) -> None:
-        """
-        Clean the rate limit DB for a specific interaction following a cooldown creation.
-
-        This allows for a cooldown to take priority over the rate limits, and function properly even if
-        cooldown is shorter than the rate limit.
-        """
-        async with constants.DB_POOL.acquire() as db_conn:
-            await db_conn.execute(
-                """
-                    DELETE FROM rate_limits WHERE (route = $1);
-                """,
-                self.ROUTE_NAME
-            )
-
-    async def _record_interaction(self, request_id: int, db_conn: asyncpg.Connection) -> None:
+    async def _record_interaction(self, request_id: int) -> None:
         """Insert an interaction into the database."""
         raise NotImplementedError()
 
-    async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
+    async def _calculate_remaining_requests(self, request_id: int) -> int:
         """Calculate the number of remaining requests."""
         raise NotImplementedError()
 
@@ -243,7 +203,7 @@ class __BucketBase:
         """Insert cooldown information into the database."""
         raise NotImplementedError()
 
-    async def _check_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> bool:
+    async def _check_cooldown(self, request_id: int) -> bool:
         """
         Check the DB for a current cooldown, and check if it can be cleared.
 
@@ -251,7 +211,7 @@ class __BucketBase:
         """
         raise NotImplementedError()
 
-    async def _get_remaining_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> int:
+    async def _get_remaining_cooldown(self, request_id: int) -> int:
         """Return the time, in seconds, until a cooldown ends."""
         raise NotImplementedError()
 
@@ -267,8 +227,7 @@ class UserRedis(__BucketBase):
 
     state: typing.Dict[int, _StateVariables]
 
-    def _post_init(self) -> None:
-        self.redis: typing.Optional[Redis] = None
+    redis: typing.Optional[Redis] = None
 
     async def _pre_call(self, _request_id: int, request: fastapi.Request, *args, **kwargs) -> None:
         request.state.auth.raise_if_failed()
@@ -286,14 +245,14 @@ class UserRedis(__BucketBase):
             )
         })
 
-    async def _record_interaction(self, request_id: int, db_conn: asyncpg.Connection) -> None:
+    async def _record_interaction(self, request_id: int) -> None:
         key = f"interaction-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
         log.debug(f"Recorded interaction of user {self.state[request_id].user_id} on {self.ROUTE_NAME}.")
 
         await self.redis.incr(key)
         await self.redis.expire(key, self.LIMITS.time_unit)
 
-    async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
+    async def _calculate_remaining_requests(self, request_id: int) -> int:
         key = f"interaction-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
 
         remaining = self.LIMITS.requests - int(await self.redis.get(key) or 0)
@@ -304,183 +263,21 @@ class UserRedis(__BucketBase):
     async def _trigger_cooldown(self, request_id: int) -> None:
         key = f"cooldown-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
 
-        log.info(f"Triggering cooldown for user {self.state[request_id].user_id} on {self.ROUTE_NAME}.")
+        log.info(
+            f"Triggering cooldown for user {self.state[request_id].user_id} "
+            f"on {self.ROUTE_NAME} for {self.LIMITS.cooldown} seconds."
+        )
         await self.redis.set(key, 1, expire=self.LIMITS.cooldown)
 
-    async def _check_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> bool:
+    async def _check_cooldown(self, request_id: int) -> bool:
         key = f"cooldown-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
 
-        return self.redis.get(key) == 1
+        if await self.redis.get(key):
+            log.debug(f"User {self.state[request_id].user_id} is already on cooldown.")
+            return True
+        return False
 
-    async def _get_remaining_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> int:
+    async def _get_remaining_cooldown(self, request_id: int) -> int:
         key = f"cooldown-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
 
         return await self.redis.ttl(key)
-
-
-class User(__BucketBase):
-    """A per user request bucket."""
-
-    @dataclass
-    class _StateVariables:
-        remaining_requests: typing.Optional[int]
-        clean_up_tasks: typing.List[typing.Callable]
-        user_id: int
-
-    def _post_init(self) -> None:
-        self.state: typing.Dict[int, User._StateVariables] = {}
-
-    async def _pre_call(self, _request_id: int, request: fastapi.Request, *args, **kwargs) -> None:
-        request.state.auth.raise_if_failed()
-
-    async def _init_state(self, request_id: int, request: fastapi.Request) -> None:
-        """Initialize the state for this request."""
-        self.state.update({
-            request_id: self._StateVariables(
-                remaining_requests=None, clean_up_tasks=[], user_id=request.state.auth.user_id
-            )
-        })
-
-    async def _clear_rate_limits(self, request_id: int) -> None:
-        async with constants.DB_POOL.acquire() as db_conn:
-            await db_conn.execute(
-                """
-                    DELETE FROM rate_limits WHERE (route = $1 AND user_id = $2);
-                """,
-                self.ROUTE_NAME, self.state[request_id].user_id
-            )
-
-    async def _record_interaction(self, request_id: int, db_conn: asyncpg.Connection) -> None:
-        await db_conn.execute(
-            """
-                INSERT INTO rate_limits (user_id, route, expiration) VALUES ($1, $2, $3);
-            """,
-            self.state[request_id].user_id,
-            self.ROUTE_NAME,
-            datetime.datetime.now() + datetime.timedelta(seconds=self.LIMITS.time_unit)
-        )
-
-    async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
-        past_requests = await db_conn.fetchval(
-            """
-                SELECT COUNT(request_id) FROM rate_limits WHERE (user_id = $1 AND route = $2 AND expiration >= $3);
-            """,
-            self.state[request_id].user_id, self.ROUTE_NAME, datetime.datetime.now()
-        )
-
-        return self.LIMITS.requests - past_requests
-
-    async def _trigger_cooldown(self, request_id: int) -> None:
-        async with constants.DB_POOL.acquire() as db_conn:
-            if not await self._check_cooldown(request_id, db_conn):
-                await db_conn.execute(
-                    """
-                        INSERT INTO cooldowns (user_id, route, expiration) VALUES ($1, $2, $3);
-                    """,
-                    self.state[request_id].user_id,
-                    self.ROUTE_NAME,
-                    datetime.datetime.now() + datetime.timedelta(seconds=self.LIMITS.cooldown)
-                )
-
-    async def _check_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> bool:
-        remaining = await self._get_remaining_cooldown(request_id, db_conn)
-
-        if remaining > 0:
-            return True
-        elif remaining == -1:
-            return False
-        else:
-            await db_conn.execute(
-                """
-                    DELETE FROM cooldowns WHERE (user_id = $1 AND route = $2)
-                """,
-                self.state[request_id].user_id, self.ROUTE_NAME
-            )
-            await self._clear_rate_limits(request_id)
-
-            return False
-
-    async def _get_remaining_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> int:
-        response = await db_conn.fetchval(
-            """
-                SELECT expiration FROM cooldowns WHERE (user_id = $1 AND route = $2)
-            """,
-            self.state[request_id].user_id, self.ROUTE_NAME
-        )
-
-        if response is not None:
-            remaining: datetime.timedelta = response - datetime.datetime.now()
-            return int(remaining.total_seconds() // 1) if remaining.total_seconds() >= 0 else 0
-
-        return -1
-
-
-class ModUser(User):
-    """A per user request bucket for mods."""
-
-    async def _pre_call(self, request: fastapi.Request, *args, **kwargs) -> None:
-        request.state.auth.raise_unless_mod()
-
-
-class Global(__BucketBase):
-    """A bucket that applies to all usages of a route."""
-
-    async def _record_interaction(self, request_id: int, db_conn: asyncpg.Connection) -> None:
-        await db_conn.execute(
-            """
-                INSERT INTO rate_limits (route, expiration) VALUES ($1, $2);
-            """,
-            self.ROUTE_NAME, datetime.datetime.now() + datetime.timedelta(seconds=self.LIMITS.time_unit)
-        )
-
-    async def _calculate_remaining_requests(self, request_id: int, db_conn: asyncpg.Connection) -> int:
-        past_requests = await db_conn.fetchval(
-            """
-                SELECT COUNT(request_id) FROM rate_limits WHERE (route = $1 AND expiration >= $2);
-            """,
-            self.ROUTE_NAME, datetime.datetime.now()
-        )
-
-        return self.LIMITS.requests - past_requests
-
-    async def _trigger_cooldown(self, request_id: int) -> None:
-        async with constants.DB_POOL.acquire() as db_conn:
-            if not await self._check_cooldown(request_id, db_conn):
-                await db_conn.execute(
-                    """
-                        INSERT INTO cooldowns (route, expiration) VALUES ($1, $2);
-                    """,
-                    self.ROUTE_NAME, datetime.datetime.now() + datetime.timedelta(seconds=self.LIMITS.cooldown)
-                )
-
-    async def _check_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> bool:
-        remaining = await self._get_remaining_cooldown(request_id, db_conn)
-
-        if remaining > 0:
-            return True
-        elif remaining == -1:
-            return False
-        else:
-            await db_conn.execute(
-                """
-                    DELETE FROM cooldowns WHERE (route = $1)
-                """,
-                self.ROUTE_NAME
-            )
-            await self._clear_rate_limits(request_id)
-
-            return False
-
-    async def _get_remaining_cooldown(self, request_id: int, db_conn: asyncpg.Connection) -> int:
-        response = await db_conn.fetchval(
-            """
-                SELECT expiration FROM cooldowns WHERE (route = $1)
-            """,
-            self.ROUTE_NAME
-        )
-
-        if response is not None:
-            remaining: datetime.timedelta = response - datetime.datetime.now()
-            return int(remaining.total_seconds() // 1) if remaining.total_seconds() >= 0 else 0
-
-        return -1

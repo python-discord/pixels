@@ -2,11 +2,12 @@
 {% block title %}Python Discord Pixels • API Token{% endblock %}
 {% block head %}
   <script type="text/javascript">
-    function copyToClipboard(element) {
-        var copyText = document.getElementById(element);
-        copyText.select();
-        copyText.setSelectionRange(0, 99999); /* For mobile devices */
-        document.execCommand("copy");
+    function copyToClipboard() {
+        navigator.clipboard.writeText('{{ token }}');
+        let elem = document.getElementById("api-token");
+        elem.focus();
+        elem.select();
+        elem.setSelectionRange(0, 99999); /* For mobile devices */
     }
   </script>
 {% endblock %}
@@ -14,17 +15,20 @@
 {% block content %}
   <div class="main-box">
     <div class="logo-box">
-      <img
+      <a href="https://pythondiscord.com/">
+        <img
         src="https://raw.githubusercontent.com/python-discord/branding/b67897df93e572c1576a9026eb78c785a794d226/logos/logo_banner/logo_site_banner.svg"
         alt="Python Discord banner"
-      />
+        />
+      </a>
     </div>
     <div class="content-box">
-      <h2>Your API token:</h2>
-      <div class="token-div">
-        <input type="text" class="api_token" id="token" value="{{  token  }}" readonly>
-        <button onclick="copyToClipboard('token')">Copy token</button>
-      </div>
+        <h2>API token:</h2>
+        <div id="token-div" onclick="copyToClipboard()">
+          <input type="text" id="api-token" value="{{  token  }}" readonly>
+            <button id="token-button"><span>Copy</span></button>
+        </div>
+        <div style="height: 25px"></div>
     </div>
   </div>
 {% endblock %}
