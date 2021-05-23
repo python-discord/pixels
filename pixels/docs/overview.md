@@ -1,3 +1,20 @@
+<h2 style="color: var(--burple);font-weight: 600;">Introduction</h2>
+The core idea of Pixels is to have a collaborative canvas, where users paint pixel by pixel, by POSTing co-ordinates and a colour code to an API.
+
+Our main goal for this project is to focus on it being a learning tool, for users who may not have previous experience with APIs.
+
+With that said however, users of all experience levels are both welcome and encouraged to join in with the event!
+
+<h2 style="color: var(--burple);font-weight: 600;">In-server</h2>
+There are two channels within [Python Discord](https://discord.gg/python) related to this event:
+
+<h3 style="color: var(--burple);font-weight: 600;">#pixels-discussion</h3>
+This channel is for the main dicussion channel for all things Pixels! Find a team, discuss the current state of the canvas, ask for help setting up a script!
+
+<h3 style="color: var(--burple);font-weight: 600;">#pixels-hook</h3>
+This channel will relay the current state of the canvas every minute. This is where your work is shown off to other users, whether they're participating or not!
+
+
 <h2 style="color: var(--burple);font-weight: 600;">A couple of prerequisites:</h2>
 
 - The current API base location is at `https://pixels.pythondiscord.com`
