@@ -53,7 +53,37 @@ a {
   box-shadow: 5px 7px 40px rgba(0, 0, 0, 0.432);
 }
 
-.logo-box {
+.header-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 120px;
+  width: auto;
+  padding: 15px;
+  background-color: var(--docs-light);
+}
+.header-content {
+  align-self: center;
+}
+.header-content > h1 {
+  color: white;
+  font-size: 75px;
+  font-weight: bold;
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-bottom: -10px;
+}
+.header-content > p {
+  flex-direction: column;
+  color: #CAD6FF;
+  font-size: 25px;
+  font-weight: bold;
+  letter-spacing: -1px;
+  line-height: 1;
+  text-align: center;
+}
+
+.logo-box > a {
   display: flex;
   justify-content: center;
   height: 120px;
@@ -63,49 +93,71 @@ a {
 }
 
 .content-box {
-  padding: 25px;
+  flex-direction: row;
+  height: auto;
+  padding: 25px 25px 0 25px;
   background-color: var(--docs-dark);
   color: #fff;
 }
 
-.api_token {
-  list-style-type: none !important;
+#api-token {
   background-color: var(--docs-input-background);
-  padding: 6px 5px;
-  margin: 1px;
-  width: 310px;
-  outline: none;
   font-size: 18px;
+  text-align: center;
+  padding: 5px 0 5px 0;
+  width: 100%;
   color: var(--docs-text-teal);
-  font-weight: 400;
   border: #758ad4 1px solid;
   border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+#api-token:focus {
+  outline: 0 solid white;
 }
 
 button {
-  padding: 4px;
+  float: right;
+  padding: 0 10px 0 20px;
   font-size: 20px;
   font-weight: 600;
   border-radius: 5px;
   background-color: var(--blurple);
   border: none;
-  box-shadow: none;
-  cursor: pointer;
   transition: 0.3s;
+  cursor: pointer;
   color: white;
-  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+  margin-left: -2.5%;
+  clip-path: polygon(10% 0%, 100% 0%, 100% 100%, 10% 100%);
+
 }
 
-.token-div {
+#token-div {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  transition: 0.3s;
+}
+#token-div:hover > button {
+  background-color: #333c5c;
+}
+#token-div:hover > #api-token {
+  border-color: #333c5c;
 }
 
-button:hover {
-  transform: scale(1.02);
+#api-token:focus-visible {
+  border-color: forestgreen !important;
 }
+#api-token:focus-visible ~ #token-button {
+  background-color: forestgreen;
+}
+#api-token:focus-visible ~ #token-button > span {
+  display: none
+}
+#api-token:focus-visible ~ #token-button:after {
+  content: "Copied";
+}
+
+
 
 ul {
   margin: 20px;
