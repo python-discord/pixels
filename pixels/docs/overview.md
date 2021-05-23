@@ -86,3 +86,34 @@ print(result.json()["message"])
 ```
 
 Which will print, in this case, `added pixel at x=123,y=12 of color 87CEEB`.
+
+<h2 style="color: var(--burple);font-weight: 600;">Rate limits</h2>
+
+To ensure that the person with the best internet connection cannot overthrow, we set up some rate limits that you have to respect.
+We use headers to communicate our current ratelimit setup. For example:
+```python
+result = requests.get("http://pixels.pythondiscord.com/get_pixels", headers=headers)
+print(result.headers)
+```
+
+We are interested in the last three headers, starting with `requests-`
+
+```python
+{
+    ...,
+    'requests-remaining': '4',
+    'requests-limit': '5',
+    'requests-reset': '10'
+}
+```
+
+Here is the meaning how each header:
+- `requests-remaining`: How many requests you are still allowed to do before waiting.
+- `requests-limit`: How many requests you can do before waiting. This number doesn't depend on your current activity.
+- `requests-reset`: How many seconds you must wait without sending a request before your remaining requests reset.
+
+Do note that trying to send a request while `requests-remaining` will result in a cooldown phase, where you won't be able to send any request for a longer time than the normal cooldown period.
+If for any reason this happens, you can check how long you have to still wait in the `cooldown-remaining` header.
+
+We recommend you  respect rate limits as much as possible, as running into cooldowns will slow you down.
+One possible setup would be to wait `requests-reset` seconds when `requests-remaining` reaches zero, but we won't give you any more hints! ![lemon_zipped](https://cdn.discordapp.com/emojis/762063569793318942.png?v=1&size=16)
