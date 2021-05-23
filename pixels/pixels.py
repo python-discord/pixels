@@ -549,6 +549,7 @@ async def webhook(request: Request) -> Message:
             )
 
             if edit_resp.status_code != 200:
+                log.warning(f"Non 200 status code from Discord: {edit_resp.status_code}\n{edit_resp.text}")
                 last_message_id = None
 
         # If no message is found in cache or message is missing, create new message
