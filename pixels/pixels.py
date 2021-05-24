@@ -82,7 +82,11 @@ app.openapi = custom_openapi
 async def my_exception_handler(request: Request, exception: StarletteHTTPException) -> Response:
     """Custom exception handler to render template for 404 error."""
     if exception.status_code == 404:
-        return templates.TemplateResponse("not_found.html", {"request": request})
+        return templates.TemplateResponse(
+            name="not_found.html",
+            context={"request": request},
+            status_code=exception.status_code
+        )
     return Response(
         status_code=exception.status_code,
         content=exception.detail

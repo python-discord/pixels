@@ -4,7 +4,6 @@ import asyncio
 import functools
 import hashlib
 import inspect
-import json
 import logging
 import typing
 from collections import namedtuple
@@ -13,6 +12,7 @@ from dataclasses import dataclass
 import fastapi
 from aioredis import Redis
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse, Response
 
 from pixels import constants
 
@@ -104,13 +104,13 @@ class __BucketBase:
 
         # functools.wraps is used here to wrap the endpoint while maintaining the signature
         @functools.wraps(route_callback)
-        async def caller(*_args, **_kwargs) -> fastapi.Response:
+        async def caller(*_args, **_kwargs) -> typing.Union[JSONResponse, Response]:
             # Instantiate request attributes
             request_id = self.request_id
             self.request_id += 1
 
             request: fastapi.Request = _kwargs['request']
-            response: typing.Optional[fastapi.Response] = None
+            response: typing.Optional[typing.Union[JSONResponse, Response]] = None
 
             await self._pre_call(*_args, _request_id=request_id, **_kwargs)
             await self._init_state(request_id, request)
@@ -122,17 +122,17 @@ class __BucketBase:
                     await self._increment(request_id)
 
                 except self.OnCooldown as e:
-                    response = fastapi.Response(
-                        json.dumps({"message": "You are currently on cooldown. Try again later."}),
-                        429
+                    response = JSONResponse(
+                        content={"message": "You are currently on cooldown. Try again later."},
+                        status_code=429
                     )
                     response.headers.append("Cooldown-Reset", str(e.remaining))
 
                 except Exception as e:
                     log.error("Failed to increment rate limiter, falling back to 500.", exc_info=e)
-                    response = fastapi.Response(
-                        json.dumps({"message": "Unknown error occurred, please contact staff."}),
-                        500
+                    response = JSONResponse(
+                        content={"message": "Unknown error occurred, please contact staff."},
+                        status_code=500
                     )
 
             # If we don't have a preformatted response because of an error or cooldown,
@@ -140,11 +140,11 @@ class __BucketBase:
             if not response:
                 result = await route_callback(*_args, **_kwargs)
 
-                if isinstance(result, fastapi.Response):
+                if isinstance(result, Response):
                     response = result
                 else:
                     clean_result = jsonable_encoder(result)
-                    response = fastapi.Response(json.dumps(clean_result, indent=4))
+                    response = JSONResponse(content=clean_result)
 
                 remaining_requests = await self.get_remaining_requests(request_id)
 
