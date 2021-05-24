@@ -565,6 +565,7 @@ async def webhook(request: Request) -> Message:
 
     return Message(message="Webhook posted successfully.")
 
+
 @app.delete("/token", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide)
 async def reset_token(request: Request) -> Response:
     """Reset an API token."""
