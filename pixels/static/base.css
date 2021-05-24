@@ -1,164 +1,174 @@
 :root {
-  --docs-light: #2D3134;
-  --docs-dark: #23272A;
-  --blurple: #7289DA;
-  --docs-text-light: #92d6ff;
-  --docs-input-background: #0f141a;
-  --docs-text-teal: #c1f0f1;
+    --docs-light: #2D3134;
+    --docs-dark: #23272A;
+    --blurple: #7289DA;
+    --docs-text-light: #92d6ff;
+    --docs-input-background: #0f141a;
+    --docs-text-teal: #c1f0f1;
 }
 
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 html {
-  height: 100%;
+    height: 100%;
 }
 
 body {
-  background-image: url("https://raw.githubusercontent.com/python-discord/branding/master/logos/banner_pattern/banner_pattern.svg");
-  background-size: 128px;
-  font-family: "Hind", "Helvetica", "Arial", sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
+    background-image: url("https://raw.githubusercontent.com/python-discord/branding/master/logos/banner_pattern/banner_pattern.svg");
+    background-size: 128px;
+    font-family: "Hind", "Helvetica", "Arial", sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
 }
 
 h1,
 p {
-  margin: 0;
-  padding: 0;
-  line-height: 125%;
+    margin: 0;
+    padding: 0;
+    line-height: 125%;
 }
 
 h1 {
-  margin-bottom: 15px;
-  font-size: 26px;
+    margin-bottom: 15px;
+    font-size: 26px;
 }
 
 a {
-  color: var(--blurple);
-  text-decoration: none;
+    color: var(--blurple);
+    text-decoration: none;
 }
+
 .main-box {
-  display: flex;
-  flex-direction: column;
-  max-width: 512px;
-  background-color: white;
-  border-radius: 15px;
-  overflow: hidden;
-  box-shadow: 5px 7px 40px rgba(0, 0, 0, 0.432);
+    display: flex;
+    flex-direction: column;
+    max-width: 512px;
+    background-color: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 5px 7px 40px rgba(0, 0, 0, 0.432);
 }
 
 .header-box {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  height: 120px;
-  width: auto;
-  padding: 15px;
-  background-color: var(--docs-light);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 120px;
+    width: auto;
+    padding: 15px;
+    background-color: var(--docs-light);
 }
+
 .header-content {
-  align-self: center;
+    align-self: center;
 }
+
 .header-content > h1 {
-  color: white;
-  font-size: 75px;
-  font-weight: bold;
-  letter-spacing: -1px;
-  line-height: 1;
-  margin-bottom: -10px;
+    color: white;
+    font-size: 75px;
+    font-weight: bold;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: -10px;
 }
+
 .header-content > p {
-  flex-direction: column;
-  color: #CAD6FF;
-  font-size: 25px;
-  font-weight: bold;
-  letter-spacing: -1px;
-  line-height: 1;
-  text-align: center;
+    flex-direction: column;
+    color: #CAD6FF;
+    font-size: 25px;
+    font-weight: bold;
+    letter-spacing: -1px;
+    line-height: 1;
+    text-align: center;
 }
 
 .logo-box > a {
-  display: flex;
-  justify-content: center;
-  height: 120px;
-  width: auto;
-  padding: 15px;
-  background-color: var(--docs-light);
+    display: flex;
+    justify-content: center;
+    height: 120px;
+    width: auto;
+    padding: 15px;
+    background-color: var(--docs-light);
 }
 
 .content-box {
-  flex-direction: row;
-  height: auto;
-  padding: 25px 25px 0 25px;
-  background-color: var(--docs-dark);
-  color: #fff;
+    flex-direction: row;
+    height: auto;
+    padding: 25px 25px 0 25px;
+    background-color: var(--docs-dark);
+    color: #fff;
 }
 
 #api-token {
-  background-color: var(--docs-input-background);
-  font-size: 18px;
-  text-align: center;
-  padding: 5px 0 5px 0;
-  width: 100%;
-  color: var(--docs-text-teal);
-  border: #758ad4 1px solid;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: 0.3s;
+    background-color: var(--docs-input-background);
+    font-family: monospace;
+    font-size: 18px;
+    text-align: center;
+    padding: 5px 8px 5px 5px;
+    width: 100%;
+    color: var(--docs-text-teal);
+    border: #758ad4 1px solid;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+    text-overflow: ellipsis;
 }
+
 #api-token:focus {
-  outline: 0 solid white;
+    outline: 0 solid white;
 }
 
 button {
-  float: right;
-  padding: 0 10px 0 20px;
-  font-size: 20px;
-  font-weight: 600;
-  border-radius: 5px;
-  background-color: var(--blurple);
-  border: none;
-  transition: 0.3s;
-  cursor: pointer;
-  color: white;
-  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-  margin-left: -2.5%;
-  clip-path: polygon(10% 0%, 100% 0%, 100% 100%, 10% 100%);
+    float: right;
+    padding: 0 10px 0 20px;
+    font-size: 19px;
+    font-weight: 600;
+    border-radius: 5px;
+    background-color: var(--blurple);
+    border: none;
+    transition: 0.3s;
+    cursor: pointer;
+    color: white;
+    margin-left: -2.5%;
+    clip-path: polygon(10% 0%, 100% 0%, 100% 100%, 10% 100%);
 
 }
 
 #token-div {
-  display: flex;
-  transition: 0.3s;
+    display: flex;
+    transition: 0.3s;
 }
+
 #token-div:hover > button {
-  background-color: #333c5c;
+    background-color: #333c5c;
 }
+
 #token-div:hover > #api-token {
-  border-color: #333c5c;
+    border-color: #333c5c;
 }
 
 #api-token:focus-visible {
-  border-color: forestgreen !important;
-}
-#api-token:focus-visible ~ #token-button {
-  background-color: forestgreen;
-}
-#api-token:focus-visible ~ #token-button > span {
-  display: none
-}
-#api-token:focus-visible ~ #token-button:after {
-  content: "Copied";
+    border-color: forestgreen !important;
 }
 
+#api-token:focus-visible ~ #token-button {
+    background-color: forestgreen;
+}
+
+#api-token:focus-visible ~ #token-button > span {
+    display: none
+}
+
+#api-token:focus-visible ~ #token-button:after {
+    content: "Copied";
+}
 
 
 ul {
-  margin: 20px;
+    margin: 20px;
 }
