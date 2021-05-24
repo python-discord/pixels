@@ -259,6 +259,16 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 
 # ENDPOINTS
 @app.get("/", tags=["General Endpoints"], include_in_schema=False)
+async def pages(request: Request) -> Response:
+    """
+    Redirect index page to /pages.
+
+    /pages is served upstream.
+    """
+    return RedirectResponse(url="/pages", status_code=301)
+
+
+@app.get("/docs", tags=["General Endpoints"], include_in_schema=False)
 async def docs(request: Request) -> Response:
     """Return the API docs."""
     template_name = "docs.html"
