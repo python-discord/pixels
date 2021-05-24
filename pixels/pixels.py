@@ -568,3 +568,13 @@ async def webhook(request: Request) -> Message:
             await redis_pool.set("last-webhook-message", create_resp["id"])
 
     return Message(message="Webhook posted successfully.")
+
+
+@app.delete("/token", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide)
+async def reset_token(request: Request) -> Response:
+    """Reset an API token."""
+    request.state.auth.raise_if_failed()
+
+    await reset_user_token(request.state.db_conn, request.state.auth.user_id)
+
+    return Response(status_code=204)
