@@ -106,7 +106,7 @@ Which will print, in this case, `added pixel at x=123,y=12 of color 87CEEB`.
 
 <h2 style="color: var(--burple);font-weight: 600;">Rate limits</h2>
 
-To ensure that the person with the best internet connection cannot overthrow, we set up some rate limits that you have to respect.
+To ensure that the person with the best internet connection cannot overthrow the board, we set up some rate limits that you have to respect.
 We use headers to communicate our current ratelimit setup. For example:
 ```python
 result = requests.get("http://pixels.pythondiscord.com/get_pixels", headers=headers)
