@@ -61,7 +61,7 @@ def custom_openapi() -> t.Dict[str, t.Any]:
         return app.openapi_schema
     openapi_schema = get_openapi(
         title="Pixels API",
-        description=None if constants.prod_hide else docs_loader.get_doc("overview"),
+        description=docs_loader.get_doc("overview") if constants.prod_hide else None,
         version="1.0.0",
         routes=app.routes,
     )
