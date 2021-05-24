@@ -513,7 +513,7 @@ async def webhook(request: Request) -> Message:
                 "url": f"attachment://pixels_{now.timestamp()}.png"
             },
             "footer": {
-                "text": "If this stops updating please ping the DevOps role to fix it • Last updated"
+                "text": "If this stops updating please ping the DevOps role to restore it • Last updated"
             },
             "timestamp": now.isoformat()
         }]
