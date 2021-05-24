@@ -43,6 +43,7 @@ a {
   color: var(--blurple);
   text-decoration: none;
 }
+
 .main-box {
   display: flex;
   flex-direction: column;
@@ -62,9 +63,11 @@ a {
   padding: 15px;
   background-color: var(--docs-light);
 }
+
 .header-content {
   align-self: center;
 }
+
 .header-content > h1 {
   color: white;
   font-size: 75px;
@@ -73,6 +76,7 @@ a {
   line-height: 1;
   margin-bottom: -10px;
 }
+
 .header-content > p {
   flex-direction: column;
   color: #CAD6FF;
@@ -102,16 +106,19 @@ a {
 
 #api-token {
   background-color: var(--docs-input-background);
+  font-family: monospace;
   font-size: 18px;
   text-align: center;
-  padding: 5px 0 5px 0;
+  padding: 5px 6px 5px 5px;
   width: 100%;
   color: var(--docs-text-teal);
   border: #758ad4 1px solid;
   border-radius: 5px;
   cursor: pointer;
   transition: 0.3s;
+  text-overflow: ellipsis;
 }
+
 #api-token:focus {
   outline: 0 solid white;
 }
@@ -119,6 +126,7 @@ a {
 button {
   float: right;
   padding: 0 10px 0 20px;
+  font-family: monospace;
   font-size: 20px;
   font-weight: 600;
   border-radius: 5px;
@@ -127,7 +135,6 @@ button {
   transition: 0.3s;
   cursor: pointer;
   color: white;
-  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
   margin-left: -2.5%;
   clip-path: polygon(10% 0%, 100% 0%, 100% 100%, 10% 100%);
 
@@ -137,9 +144,11 @@ button {
   display: flex;
   transition: 0.3s;
 }
+
 #token-div:hover > button {
   background-color: #333c5c;
 }
+
 #token-div:hover > #api-token {
   border-color: #333c5c;
 }
@@ -147,16 +156,18 @@ button {
 #api-token:focus-visible {
   border-color: forestgreen !important;
 }
+
 #api-token:focus-visible ~ #token-button {
   background-color: forestgreen;
 }
+
 #api-token:focus-visible ~ #token-button > span {
   display: none
 }
+
 #api-token:focus-visible ~ #token-button:after {
   content: "Copied";
 }
-
 
 
 ul {
