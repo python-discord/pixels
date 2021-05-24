@@ -259,13 +259,13 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 
 # ENDPOINTS
 @app.get("/", tags=["General Endpoints"], include_in_schema=False)
-async def pages(request: Request) -> Response:
+async def info(request: Request) -> Response:
     """
-    Redirect index page to /pages.
+    Redirect index page to /info.
 
-    /pages is served upstream.
+    /info is served upstream.
     """
-    return RedirectResponse(url="/pages", status_code=301)
+    return RedirectResponse(url="/info", status_code=301)
 
 
 @app.get("/docs", tags=["General Endpoints"], include_in_schema=False)
