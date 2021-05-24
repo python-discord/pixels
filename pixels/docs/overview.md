@@ -28,6 +28,8 @@ A large asset to you while making API requests will be the [requests library doc
 
 API authentication is done using a bearer token in the `Authorization` header of requests made to the API. To obtain a bearer token for yourself, head to https://pixels.pythondiscord.com/authorize and follow the Discord OAuth flow.
 
+Important: your token is secret and shouldn't be shared with anyone! If you ever posted it in a public chat, please regenerate a new one using the same URL.
+
 Next, you'll want to keep that token safe in your preferred way of storing secrets. If you haven't dealt with storing secrets before you can utilise the widely used `.env` format.
 
 Here's a brief example of how you can load your token from a `.env` file:
