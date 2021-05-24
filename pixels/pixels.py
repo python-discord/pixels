@@ -13,6 +13,7 @@ from PIL import Image
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -87,7 +88,7 @@ async def my_exception_handler(request: Request, exception: StarletteHTTPExcepti
             context={"request": request},
             status_code=exception.status_code
         )
-    return Response(
+    return JSONResponse(
         status_code=exception.status_code,
         content=exception.detail
     )
