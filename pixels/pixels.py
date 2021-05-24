@@ -314,7 +314,6 @@ async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
     conn = request.state.db_conn
     users = [user.user_id for user in user_list]
 
-    # Should be fetched from cache whenever it is implemented.
     sql = "SELECT * FROM users WHERE user_id=any($1::bigint[])"
     records = await conn.fetch(sql, tuple(users))
     db_users = [record["user_id"] for record in records]
@@ -325,9 +324,12 @@ async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
     # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
     sql = "UPDATE users SET is_banned=TRUE where user_id=any($1::bigint[])"
 
-    await conn.execute(
-        sql, db_users
-    )
+    await conn.execute(sql, db_users)
+
+    sql = "UPDATE pixel_history SET deleted=TRUE where user_id=any($1::bigint[])"
+    await conn.execute(sql, db_users)
+
+    await canvas.sync_cache(conn)
 
     resp = {"banned": db_users, "not_found": []}
     if non_db_users:
