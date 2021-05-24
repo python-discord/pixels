@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import fastapi
 from aioredis import Redis
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from pixels import constants
 
@@ -104,13 +104,13 @@ class __BucketBase:
 
         # functools.wraps is used here to wrap the endpoint while maintaining the signature
         @functools.wraps(route_callback)
-        async def caller(*_args, **_kwargs) -> JSONResponse:
+        async def caller(*_args, **_kwargs) -> typing.Union[JSONResponse, Response]:
             # Instantiate request attributes
             request_id = self.request_id
             self.request_id += 1
 
             request: fastapi.Request = _kwargs['request']
-            response: typing.Optional[JSONResponse] = None
+            response: typing.Optional[typing.Union[JSONResponse, Response]] = None
 
             await self._pre_call(*_args, _request_id=request_id, **_kwargs)
             await self._init_state(request_id, request)
@@ -140,7 +140,7 @@ class __BucketBase:
             if not response:
                 result = await route_callback(*_args, **_kwargs)
 
-                if isinstance(result, JSONResponse):
+                if isinstance(result, Response):
                     response = result
                 else:
                     clean_result = jsonable_encoder(result)
