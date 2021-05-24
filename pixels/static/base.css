@@ -126,7 +126,8 @@ a {
 button {
   float: right;
   padding: 0 10px 0 20px;
-  font-size: 19px;
+  font-family: monospace;
+  font-size: 20px;
   font-weight: 600;
   border-radius: 5px;
   background-color: var(--blurple);
