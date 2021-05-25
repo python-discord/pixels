@@ -459,15 +459,43 @@ async def get_pixels(request: Request) -> Response:
 @app.get("/get_pixel", tags=["Canvas Endpoints"], response_model=Pixel)
 @ratelimits.UserRedis(requests=45, time_unit=60, cooldown=120)
 async def get_pixel(x: int, y: int, request: Request) -> Pixel:
-    """Get a single pixel given the x and y coordinates."""
+    """
+    Get a single pixel given the x and y coordinates.
+
+    This endpoint requires an authentication token.
+    See [this page](https://pixels.pythondiscord.com/info/authentication)
+    for how to authenticate with the API.
+
+    #### Example Python Script
+    ```py
+    from dotenv import load_dotenv
+    from os import getenv
+    import requests
+
+    load_dotenv(".env")
+
+    token = getenv("TOKEN")
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    r = requests.get(
+        "https://pixels.pythondiscord.com/set_pixel",
+        headers=headers,
+        params={  # Note: we're using query string parameters to define the coordinates, not the JSON body.
+            "x": 87,
+            "y": 69
+        }
+    )
+
+    print("Here's the colour of the pixel:", r.json()["rgb"])
+    """
     request.state.auth.raise_if_failed()
 
     if x >= constants.width or y >= constants.height:
         raise HTTPException(400, "Pixel is out of the canvas bounds.")
     pixel_data = await canvas.get_pixel(x, y)
-    print(list(pixel_data))
 
-    return Pixel(x=x, y=y, rgb=''.join('{:02x}'.format(x) for x in pixel_data))
+    return Pixel(x=x, y=y, rgb=''.join(f"{x:02x}" for x in pixel_data))
 
 
 @app.post("/set_pixel", tags=["Canvas Endpoints"], response_model=Message)
