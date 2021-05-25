@@ -18,7 +18,6 @@ from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
-from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import RedirectResponse
@@ -46,8 +45,6 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="pixels/static"), name="static")
 
 templates = Jinja2Templates(directory="pixels/templates")
-
-auth_s = URLSafeSerializer(secrets.token_hex(16))
 
 # Global canvas reference
 canvas: t.Optional[Canvas] = None
@@ -180,7 +177,6 @@ async def auth_callback(request: Request) -> Response:
         raise HTTPException(401, "You are banned")
 
     # Redirect so that a user doesn't refresh the page and spam discord
-    token = auth_s.dumps(token)
     redirect = RedirectResponse("/show_token", status_code=303)
     redirect.set_cookie(
         key='token',
@@ -199,7 +195,6 @@ async def show_token(request: Request, token: str = Cookie(None)) -> Response:  
     context = {"request": request}
 
     if token:
-        token = auth_s.loads(token)
         context["token"] = token
         template_name = "api_token.html"
 
