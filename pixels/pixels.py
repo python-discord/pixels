@@ -72,6 +72,14 @@ def custom_openapi() -> t.Dict[str, t.Any]:
             "scheme": "Bearer"
         }
     }
+    for route in app.routes:
+        # Use getattr as not all routes have this attr
+        if not getattr(route, "include_in_schema", False):
+            continue
+        # For each method the path provides insert the Bearer security type
+        # So RapiDoc knows how to auth for that endpoint
+        for method in route.methods:
+            openapi_schema["paths"][route.path][method.lower()]["security"] = [{"Bearer": []}]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
