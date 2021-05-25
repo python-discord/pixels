@@ -35,7 +35,7 @@ from pixels.models import (
     PixelHistory,
     User,
 )
-from pixels.utils import docs_loader, ratelimits
+from pixels.utils import ratelimits
 
 log = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def custom_openapi() -> t.Dict[str, t.Any]:
         return app.openapi_schema
     openapi_schema = get_openapi(
         title="Pixels API",
-        description=docs_loader.get_doc("overview") if constants.prod_hide else None,
+        description=None,
         version="1.0.0",
         routes=app.routes,
     )
