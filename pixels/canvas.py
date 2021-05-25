@@ -125,3 +125,8 @@ class Canvas:
     async def get_pixels(self) -> bytearray:
         """Returns the whole board."""
         return await self.redis.get("canvas-cache")
+
+    async def get_pixel(self, x: int, y: int) -> bytearray:
+        """Returns the whole board."""
+        position = (y * constants.width + x) * 3
+        return await self.redis.getrange("canvas-cache", position, position+3)
