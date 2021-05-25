@@ -405,7 +405,7 @@ async def get_size(request: Request) -> GetSize:
     canvas_height = payload["height"]
     canvas_width = payload["width"]
 
-    print(f"We got our canvas size! Height: {canvas_height}, Width: {canvas_width.")
+    print(f"We got our canvas size! Height: {canvas_height}, Width: {canvas_width}.")
     ```
     """
     return GetSize(width=constants.width, height=constants.height)
