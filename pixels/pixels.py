@@ -28,6 +28,7 @@ from pixels.models import (
     AuthResult,
     AuthState,
     GetSize,
+    Location,
     Message,
     ModBan,
     Pixel,
@@ -493,6 +494,33 @@ async def set_pixel(request: Request, pixel: Pixel) -> Message:
     log.info(f"{request.state.auth.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
     await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
     return Message(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
+
+
+@app.post("/swap_pixel", tags=["Canvas Endpoints"], response_model=Message)
+@ratelimits.UserRedis(requests=1, time_unit=constants.SWAP_RATE_LIMIT, cooldown=constants.SWAP_RATE_LIMIT * 2)
+async def move_pixel(request: Request, origin: Location, dest: Location) -> Message:
+    """Swap two pixels within a 10 pixel radius."""
+    dst_x = abs(origin.x - dest.x)
+    dst_y = abs(origin.y - dest.y)
+
+    dst = max(dst_x, dst_y)
+
+    if dst > 10:
+        raise HTTPException(400, "You can't swap pixels more than 10 pixels away from eachother.")
+
+    def get_pixel(pixels: bytearray, loc: Location) -> str:
+        offset = (loc.y * constants.width + loc.x) * 3
+        r, g, b = pixels[offset:offset+3]
+        return "".join(hex(i)[2:].zfill(2) for i in (r, g, b))
+
+    pixels = await canvas.get_pixels()
+    origin_pixel = get_pixel(pixels, origin)
+    dest_pixel = get_pixel(pixels, dest)
+
+    await canvas.set_pixel(request.state.db_conn, dest.x, dest.y, origin_pixel, request.state.auth.user_id)
+    await canvas.set_pixel(request.state.db_conn, origin.x, origin.y, dest_pixel, request.state.auth.user_id)
+
+    return Message(message=f"Swapped colours of pixels at locations {origin.x},{origin.y} and {dest.x},{dest.y}")
 
 
 @app.post("/webhook", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide, response_model=Message)

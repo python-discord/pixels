@@ -51,6 +51,34 @@ class Pixel(BaseModel):
         schema_extra = {"example": {"x": constants.width // 2, "y": constants.height // 2, "rgb": "00FF00"}}
 
 
+class Location(BaseModel):
+    """A pixel location."""
+
+    x: int
+    y: int
+
+    @validator("x")
+    def x_must_be_lt_width(cls, x: int) -> int:
+        """Ensure that x is within the bounds of the image."""
+        if 0 <= x < constants.width:
+            return x
+        else:
+            raise ValueError(f"x must be inside range(0, {constants.width})")
+
+    @validator("y")
+    def y_must_be_lt_height(cls, y: int) -> int:
+        """Ensure that y is within the bounds of the image."""
+        if 0 <= y < constants.height:
+            return y
+        else:
+            raise ValueError(f"y must be inside range(0, {constants.height})")
+
+    class Config:
+        """Additional settings for this model."""
+
+        schema_extra = {"example": {"x": constants.width // 2, "y": constants.height // 2}}
+
+
 class User(BaseModel):
     """A user as used by the API."""
 

@@ -35,6 +35,7 @@ prod_hide = "true" != config("PRODUCTION", default="false")
 
 # How many seconds you have to wait before setting another pixel
 PIXEL_RATE_LIMIT = 120
+SWAP_RATE_LIMIT = 45
 
 # Awaited in application startup
 DB_POOL = asyncpg.create_pool(
