@@ -457,7 +457,7 @@ async def get_pixels(request: Request) -> Response:
 
 
 @app.get("/get_pixel", tags=["Canvas Endpoints"], response_model=Pixel)
-@ratelimits.UserRedis(requests=45, time_unit=60, cooldown=120)
+@ratelimits.UserRedis(requests=8, time_unit=10, cooldown=120)
 async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     """
     Get a single pixel given the x and y coordinates.
