@@ -488,6 +488,7 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     )
 
     print("Here's the colour of the pixel:", r.json()["rgb"])
+    ```
     """
     request.state.auth.raise_if_failed()
 
