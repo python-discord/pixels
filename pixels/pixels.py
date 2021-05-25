@@ -424,7 +424,7 @@ async def get_size(request: Request) -> GetSize:
         }
     }
 })
-@ratelimits.UserRedis(requests=5, time_unit=10, cooldown=20)
+@ratelimits.UserRedis(requests=5, time_unit=10, cooldown=60)
 async def get_pixels(request: Request) -> Response:
     """
     Get the current state of all pixels from the database.
