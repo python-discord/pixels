@@ -456,6 +456,20 @@ async def get_pixels(request: Request) -> Response:
                     media_type="application/octet-stream")
 
 
+@app.get("/get_pixel", tags=["Canvas Endpoints"], response_model=Pixel)
+@ratelimits.UserRedis(requests=45, time_unit=60, cooldown=120)
+async def get_pixel(x: int, y: int, request: Request) -> Pixel:
+    """Get a single pixel given the x and y coordinates."""
+    request.state.auth.raise_if_failed()
+
+    if x >= constants.width or y >= constants.height:
+        raise HTTPException(400, "Pixel is out of the canvas bounds.")
+    pixel_data = await canvas.get_pixel(x, y)
+    print(list(pixel_data))
+
+    return Pixel(x=x, y=y, rgb=''.join('{:02x}'.format(x) for x in pixel_data))
+
+
 @app.post("/set_pixel", tags=["Canvas Endpoints"], response_model=Message)
 @ratelimits.UserRedis(requests=2, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=int(constants.PIXEL_RATE_LIMIT * 1.5))
 async def set_pixel(request: Request, pixel: Pixel) -> Message:
