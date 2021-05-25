@@ -479,7 +479,7 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     headers = {"Authorization": f"Bearer {token}"}
 
     r = requests.get(
-        "https://pixels.pythondiscord.com/set_pixel",
+        "https://pixels.pythondiscord.com/get_pixel",
         headers=headers,
         params={  # Note: we're using query string parameters to define the coordinates, not the JSON body.
             "x": 87,
