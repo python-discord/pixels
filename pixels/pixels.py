@@ -429,7 +429,7 @@ async def get_pixels(request: Request) -> Response:
     """
     Get the current state of all pixels from the database.
 
-    This endpoint requires an authentication token. 
+    This endpoint requires an authentication token.
     See [this page](https://pixels.pythondiscord.com/info/authentication)
     for how to authenticate with the API.
 
@@ -462,7 +462,7 @@ async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
     Override the pixel at the specified position with the specified color.
 
-    This endpoint requires an authentication token. 
+    This endpoint requires an authentication token.
     See [this page](https://pixels.pythondiscord.com/info/authentication)
     for how to authenticate with the API.
 
