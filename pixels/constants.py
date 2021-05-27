@@ -21,8 +21,8 @@ user_url = config("USER_URL", default="https://discord.com/api/users/@me")
 api_base = "https://discord.com/api/v8"
 webhook_url = config("WEBHOOK_URL")
 
-width = 160
-height = 90
+width = 208
+height = 117
 
 webhook_size = (1600, 900)
 
