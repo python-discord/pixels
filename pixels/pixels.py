@@ -13,11 +13,11 @@ from PIL import Image
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
-from itsdangerous import URLSafeSerializer
 from jose import JWTError, jwt
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import RedirectResponse
@@ -35,7 +35,7 @@ from pixels.models import (
     PixelHistory,
     User,
 )
-from pixels.utils import docs_loader, ratelimits
+from pixels.utils import ratelimits
 
 log = logging.getLogger(__name__)
 
@@ -46,8 +46,6 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="pixels/static"), name="static")
 
 templates = Jinja2Templates(directory="pixels/templates")
-
-auth_s = URLSafeSerializer(secrets.token_hex(16))
 
 # Global canvas reference
 canvas: t.Optional[Canvas] = None
@@ -62,7 +60,7 @@ def custom_openapi() -> t.Dict[str, t.Any]:
         return app.openapi_schema
     openapi_schema = get_openapi(
         title="Pixels API",
-        description=docs_loader.get_doc("overview") if constants.prod_hide else None,
+        description=None,
         version="1.0.0",
         routes=app.routes,
     )
@@ -72,6 +70,14 @@ def custom_openapi() -> t.Dict[str, t.Any]:
             "scheme": "Bearer"
         }
     }
+    for route in app.routes:
+        # Use getattr as not all routes have this attr
+        if not getattr(route, "include_in_schema", False):
+            continue
+        # For each method the path provides insert the Bearer security type
+        # So RapiDoc knows how to auth for that endpoint
+        for method in route.methods:
+            openapi_schema["paths"][route.path][method.lower()]["security"] = [{"Bearer": []}]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -88,9 +94,9 @@ async def my_exception_handler(request: Request, exception: StarletteHTTPExcepti
             context={"request": request},
             status_code=exception.status_code
         )
-    return Response(
+    return JSONResponse(
         status_code=exception.status_code,
-        content=exception.detail
+        content={"message": exception.detail}
     )
 
 
@@ -180,7 +186,6 @@ async def auth_callback(request: Request) -> Response:
         raise HTTPException(401, "You are banned")
 
     # Redirect so that a user doesn't refresh the page and spam discord
-    token = auth_s.dumps(token)
     redirect = RedirectResponse("/show_token", status_code=303)
     redirect.set_cookie(
         key='token',
@@ -199,7 +204,6 @@ async def show_token(request: Request, token: str = Cookie(None)) -> Response:  
     context = {"request": request}
 
     if token:
-        token = auth_s.loads(token)
         context["token"] = token
         template_name = "api_token.html"
 
@@ -405,7 +409,7 @@ async def get_size(request: Request) -> GetSize:
     canvas_height = payload["height"]
     canvas_width = payload["width"]
 
-    print(f"We got our canvas size! Height: {canvas_height}, Width: {canvas_width.")
+    print(f"We got our canvas size! Height: {canvas_height}, Width: {canvas_width}.")
     ```
     """
     return GetSize(width=constants.width, height=constants.height)
@@ -424,12 +428,13 @@ async def get_size(request: Request) -> GetSize:
         }
     }
 })
-@ratelimits.UserRedis(requests=5, time_unit=10, cooldown=20)
+@ratelimits.UserRedis(requests=5, time_unit=10, cooldown=60)
 async def get_pixels(request: Request) -> Response:
     """
     Get the current state of all pixels from the database.
 
-    This endpoint requires an authentication token. See [the overview](/#overview)
+    This endpoint requires an authentication token.
+    See [this page](https://pixels.pythondiscord.com/info/authentication)
     for how to authenticate with the API.
 
     #### Example Python Script
@@ -455,13 +460,57 @@ async def get_pixels(request: Request) -> Response:
                     media_type="application/octet-stream")
 
 
+@app.get("/get_pixel", tags=["Canvas Endpoints"], response_model=Pixel)
+@ratelimits.UserRedis(requests=8, time_unit=10, cooldown=120)
+async def get_pixel(x: int, y: int, request: Request) -> Pixel:
+    """
+    Get a single pixel given the x and y coordinates.
+
+    This endpoint requires an authentication token.
+    See [this page](https://pixels.pythondiscord.com/info/authentication)
+    for how to authenticate with the API.
+
+    #### Example Python Script
+    ```py
+    from dotenv import load_dotenv
+    from os import getenv
+    import requests
+
+    load_dotenv(".env")
+
+    token = getenv("TOKEN")
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    r = requests.get(
+        "https://pixels.pythondiscord.com/get_pixel",
+        headers=headers,
+        params={  # Note: we're using query string parameters to define the coordinates, not the JSON body.
+            "x": 87,
+            "y": 69
+        }
+    )
+
+    print("Here's the colour of the pixel:", r.json()["rgb"])
+    ```
+    """
+    request.state.auth.raise_if_failed()
+
+    if x >= constants.width or y >= constants.height:
+        raise HTTPException(400, "Pixel is out of the canvas bounds.")
+    pixel_data = await canvas.get_pixel(x, y)
+
+    return Pixel(x=x, y=y, rgb=''.join(f"{x:02x}" for x in pixel_data))
+
+
 @app.post("/set_pixel", tags=["Canvas Endpoints"], response_model=Message)
-@ratelimits.UserRedis(requests=1, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=constants.PIXEL_RATE_LIMIT * 2)
+@ratelimits.UserRedis(requests=2, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=int(constants.PIXEL_RATE_LIMIT * 1.5))
 async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
     Override the pixel at the specified position with the specified color.
 
-    This endpoint requires an authentication token. See [the overview](/#overview)
+    This endpoint requires an authentication token.
+    See [this page](https://pixels.pythondiscord.com/info/authentication)
     for how to authenticate with the API.
 
     #### Example Python Script
@@ -564,7 +613,7 @@ async def webhook(request: Request) -> Message:
         None,
         partial(
             image.resize,
-            (constants.width * 10, constants.height * 10),
+            constants.webhook_size,
             Image.NEAREST
         )
     )

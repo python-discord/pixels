@@ -52,9 +52,13 @@ class Canvas:
         log.info(f"Cache updated finished! (took {time() - start_time}s)")
         await conn.execute("UPDATE cache_state SET last_synced = now()")
 
-    @staticmethod
-    async def is_cache_out_of_date(conn: Connection) -> bool:
+    async def is_cache_out_of_date(self, conn: Connection) -> bool:
         """Return true if the cache can be considered out of date."""
+        cache = await self.get_pixels()
+        if len(cache)//3 != constants.width*constants.height:
+            # Canvas size has changed, force a cache refresh
+            return True
+
         record, = await conn.fetch("SELECT last_modified, last_synced FROM cache_state")
         return record["last_modified"] > record["last_synced"]
 
@@ -125,3 +129,8 @@ class Canvas:
     async def get_pixels(self) -> bytearray:
         """Returns the whole board."""
         return await self.redis.get("canvas-cache")
+
+    async def get_pixel(self, x: int, y: int) -> bytearray:
+        """Returns a single pixel from the board."""
+        position = (y * constants.width + x) * 3
+        return await self.redis.getrange("canvas-cache", position, position+2)

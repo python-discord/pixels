@@ -114,14 +114,14 @@ class AuthState(enum.Enum):
         """Raise an HTTPException if a user isn't authorized."""
         if self:
             return
-        raise HTTPException(status_code=401, detail=self.value)
+        raise HTTPException(status_code=403, detail=self.value)
 
     def raise_unless_mod(self) -> None:
         """Raise an HTTPException if a moderator isn't authorized."""
         if self == AuthState.MODERATOR:
             return
         elif self == AuthState.USER:
-            raise HTTPException(status_code=401, detail="This endpoint is limited to moderators")
+            raise HTTPException(status_code=403, detail="This endpoint is limited to moderators")
         self.raise_if_failed()
 
 
