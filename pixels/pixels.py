@@ -585,7 +585,7 @@ async def webhook(request: Request) -> Message:
         None,
         partial(
             image.resize,
-            (constants.width * 10, constants.height * 10),
+            constants.webhook_size,
             Image.NEAREST
         )
     )

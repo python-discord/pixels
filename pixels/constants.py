@@ -24,6 +24,8 @@ webhook_url = config("WEBHOOK_URL")
 width = 160
 height = 90
 
+webhook_size = (1600, 900)
+
 x_query_validator = Query(None, ge=0, lt=width)
 y_query_validator = Query(None, ge=0, lt=height)
 
