@@ -557,17 +557,11 @@ async def move_pixel(request: Request, origin: Location, dest: Location) -> Mess
     if dst > 10:
         raise HTTPException(400, "You can't swap pixels more than 10 pixels away from eachother.")
 
-    def get_pixel(pixels: bytearray, loc: Location) -> str:
-        offset = (loc.y * constants.width + loc.x) * 3
-        r, g, b = pixels[offset:offset+3]
-        return "".join(hex(i)[2:].zfill(2) for i in (r, g, b))
+    origin_pixel = await canvas.get_pixel(origin.x, origin.y)
+    dest_pixel = await canvas.get_pixel(origin.x, origin.y)
 
-    pixels = await canvas.get_pixels()
-    origin_pixel = get_pixel(pixels, origin)
-    dest_pixel = get_pixel(pixels, dest)
-
-    await canvas.set_pixel(request.state.db_conn, dest.x, dest.y, origin_pixel, request.state.auth.user_id)
-    await canvas.set_pixel(request.state.db_conn, origin.x, origin.y, dest_pixel, request.state.auth.user_id)
+    await canvas.set_pixel(request.state.db_conn, dest.x, dest.y, origin_pixel.hex(), request.state.auth.user_id)
+    await canvas.set_pixel(request.state.db_conn, origin.x, origin.y, dest_pixel.hex(), request.state.auth.user_id)
 
     return Message(message=f"Swapped colours of pixels at locations {origin.x},{origin.y} and {dest.x},{dest.y}")
 
