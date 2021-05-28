@@ -55,7 +55,7 @@ class Canvas:
     async def is_cache_out_of_date(self, conn: Connection) -> bool:
         """Return true if the cache can be considered out of date."""
         cache = await self.get_pixels()
-        if len(cache)//3 != constants.width*constants.height:
+        if not cache or len(cache) // 3 != constants.width * constants.height:
             # Canvas size has changed, force a cache refresh
             return True
 
