@@ -6,8 +6,10 @@ import hashlib
 import inspect
 import logging
 import typing
+import uuid
 from collections import namedtuple
 from dataclasses import dataclass
+from time import time
 
 import fastapi
 from aioredis import Redis
@@ -249,13 +251,15 @@ class UserRedis(__BucketBase):
         key = f"interaction-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
         log.debug(f"Recorded interaction of user {self.state[request_id].user_id} on {self.ROUTE_NAME}.")
 
-        await self.redis.incr(key)
+        await self.redis.zadd(key, time() + self.LIMITS.time_unit, str(uuid.uuid4()))
         await self.redis.expire(key, self.LIMITS.time_unit)
 
     async def _calculate_remaining_requests(self, request_id: int) -> int:
         key = f"interaction-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
 
-        remaining = self.LIMITS.requests - int(await self.redis.get(key) or 0)
+        # Cleanup expired entries
+        await self.redis.zremrangebyscore(key, max=time())
+        remaining = self.LIMITS.requests - int(await self.redis.zcount(key) or 0)
 
         log.debug(f"Remaining interactions of user {self.state[request_id].user_id} on {self.ROUTE_NAME}: {remaining}.")
         return remaining
