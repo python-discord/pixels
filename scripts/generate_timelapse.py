@@ -20,6 +20,11 @@ DB_POOL = asyncpg.create_pool(
 MAX_WIDTH = 160
 MAX_HEIGHT = 90
 
+START_DATE = datetime(2021, 5, 24, 23, 15)
+END_DATE = datetime(2021, 5, 27, 17)
+INVERAL_DELTA = timedelta(minutes=15)
+FPS = 15
+
 log = logging.getLogger()
 format_string = "[%(asctime)s] [%(process)d] [%(levelname)s] %(name)s - %(message)s"
 date_format_string = "%Y-%m-%d %H:%M:%S %z"
@@ -36,13 +41,6 @@ def datetime_range(start: datetime, end: datetime, delta: timedelta) -> t.Genera
     while current < end:
         yield current
         current += delta
-
-
-TIMES = datetime_range(
-    datetime(2021, 5, 24, 23, 15),
-    datetime(2021, 5, 27, 17),
-    timedelta(minutes=5)
-)
 
 
 @dataclass
@@ -79,9 +77,10 @@ async def fetch_one_snapshot(pool: Pool, time: datetime) -> Snapshot:
 async def get_snapshots() -> t.List[Snapshot]:
     """Fetch snapshots from the db using a connection pool."""
     pool = await DB_POOL
+    times = datetime_range(START_DATE, END_DATE, INVERAL_DELTA)
     tasks = [
         fetch_one_snapshot(pool, time)
-        for time in TIMES
+        for time in times
     ]
     return await asyncio.gather(*tasks)
 
@@ -113,7 +112,7 @@ start = perf_counter()
 os.system(
     "ffmpeg "
     "-hide_banner -loglevel error "  # Silence output
-    "-r 30 "  # Output FPS
+    f"-r {FPS} "  # Output FPS
     r"-i ./frames/frame%01d.png "  # Image source
     "-vcodec libx264 -crf 25 -pix_fmt yuv420p "  # Formats and codecs
     "-y "  # Skip confirm
