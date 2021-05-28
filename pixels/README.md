@@ -36,5 +36,5 @@ To avoid having one person fill the entire board, we set up rate limits, leverag
 One of the main requirements is that the request count must be removed after a set amount of time.
 Redis [TTL functionality](https://redis.io/commands/TTL) is perfect to automatically remove expired requests.
 
-We insert request counts in Redis as soon as we receive them, set the expiry time to be the reset time, and set dummy values for users under cooldown.
-The lack of needing a background clearing task makes it fast and efficient, even if we have to handle a lot of concurrent connections.
+Another requirement is to have a rolling window mechanism, so requesting the same endpoint every X seconds or in burst will result in the same speed. With that in mind, a sorted set is created for each bucket. Each entry contains a random dummy value and its score is set to be the current timestamp plus the rate limit duration.
+Before counting entries, we simply remove entries from `-inf` to the current timestamp using a [ZREMBYSCORE](https://redis.io/commands/zremrangebyscore) operation, allowing it to stay O(log n).
