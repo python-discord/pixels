@@ -1,0 +1,52 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[tool.poetry]
+name = "pixels"
+version = "1.0.0"
+description = "A collaborative canvas, where users paint pixel by pixel, by POSTing co-ordinates and a colour code to an API."
+authors = ["Python Discord <info@pythondiscord.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "3.9.5"
+asyncpg = "~=0.23.0"
+uvicorn = {extras = ["standard"], version = "~=0.13.4"}
+gunicorn = "~=20.1.0"
+fastapi = "~=0.65.1"
+python-decouple = "~=3.4"
+httpx = "~=0.18.1"
+python-jose = {extras = ["cryptography"], version = "~=3.2.0"}
+jinja2 = "~=3.0.1"
+aioredis = "~=1.3.1"
+aiofiles = "~=0.7.0"
+pillow = "~=8.2.0"
+
+[dev-packages]
+coverage = "~=5.0"
+flake8 = "~=3.8"
+flake8-annotations = "~=2.0"
+flake8-bugbear = "~=20.1"
+flake8-docstrings = "~=1.4"
+flake8-import-order = "~=0.18"
+flake8-string-format = "~=0.2"
+flake8-tidy-imports = "~=4.0"
+flake8-todo = "~=0.7"
+pep8-naming = "~=0.9"
+pre-commit = "~=2.1"
+requests = "~=2.25.1"
+click = "~=8.0.1"
+taskipy = "~=1.7.0"
+python-dotenv = "~=0.17.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.taskipy.tasks]
+start = "uvicorn pixels.pixels:app"
+reload = "uvicorn pixels.pixels:app --reload"
+lint = "pre-commit run --all-files"
+precommit = "pre-commit install"
