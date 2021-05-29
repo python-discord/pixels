@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import functools
 import hashlib
@@ -73,7 +71,7 @@ class __BucketBase:
 
         # Bucket Params
         self.ROUTE_NAME: typing.Optional[str] = None
-        self.ROUTES: typing.List[str] = []
+        self.ROUTES: list[str] = []
         self.BYPASS = bypass
 
         _limits_type = namedtuple("LIMITS", "requests, time_unit, cooldown")
@@ -255,10 +253,10 @@ class UserRedis(__BucketBase):
     @dataclass
     class _StateVariables:
         remaining_requests: typing.Optional[int]
-        clean_up_tasks: typing.List[typing.Callable]
+        clean_up_tasks: list[typing.Callable]
         user_id: int
 
-    state: typing.Dict[int, _StateVariables]
+    state: dict[int, _StateVariables]
 
     redis: typing.Optional[Redis] = None
 
