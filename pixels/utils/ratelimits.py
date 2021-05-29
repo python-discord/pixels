@@ -323,4 +323,4 @@ class UserRedis(__BucketBase):
         if not (newest_uuid := await self.redis.zrange(key, 0, 0)):
             return 0
 
-        return await self.redis.zscore(key, newest_uuid[0]) - time()
+        return max(0, await self.redis.zscore(key, newest_uuid[0]) - time())
