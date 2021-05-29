@@ -53,7 +53,7 @@ canvas: t.Optional[Canvas] = None
 redis_pool: t.Optional[aioredis.Redis] = None
 
 
-def custom_openapi() -> t.Dict[str, t.Any]:
+def custom_openapi() -> dict[str, t.Any]:
     """Creates a custom OpenAPI schema."""
     if app.openapi_schema:
         return app.openapi_schema
@@ -148,7 +148,7 @@ async def setup_data(request: Request, callnext: t.Callable) -> Response:
     return response
 
 
-def build_oauth_token_request(code: str) -> t.Tuple[dict, dict]:
+def build_oauth_token_request(code: str) -> tuple[dict, dict]:
     """Given a code, return a dict of query params needed to complete the oath flow."""
     query = dict(
         client_id=constants.client_id,
@@ -311,7 +311,7 @@ async def set_mod(request: Request, user: User) -> Message:
 
 
 @app.post("/mod_ban", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide, response_model=ModBan)
-async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
+async def ban_users(request: Request, user_list: list[User]) -> ModBan:
     """Ban users from using the API."""
     request.state.auth.raise_unless_mod()
 
