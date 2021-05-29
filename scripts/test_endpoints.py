@@ -1,9 +1,8 @@
 import colorsys
 import math
-import multiprocessing
 import random
 
-import httpx
+import click
 import requests
 from PIL import Image
 from decouple import config
@@ -16,58 +15,69 @@ HEADERS = {
 }
 
 
+@click.group()
+def cli() -> None:
+    """The main click group for all sub commands."""
+    pass
+
+
+@cli.command()
 def check_if_mod() -> dict:
     """Calls the `/mod` endpoint and returns the response."""
-    r = requests.get(f"{base_url}/mod", headers=HEADERS)
-    return r.json()
+    a = requests.get(f"{base_url}/mod", headers=HEADERS)
+    print(f"Response:{a.text}\nHeaders:{a.headers}")
+    a.raise_for_status()
 
 
+@cli.command()
+@click.argument("user_id", type=int)
 def set_to_mod(user_id: int) -> dict:
     """Makes the given `user_id` a mod."""
-    r = requests.post(
+    a = requests.post(
         f"{base_url}/set_mod",
         headers=HEADERS,
         json={"user_id": user_id}
     )
-    return r.json()
+    print(f"Response:{a.text}\nHeaders:{a.headers}")
+    a.raise_for_status()
 
 
+@cli.command()
 def show_image() -> None:
     """Gets the current image it displays it on screen."""
-    a = requests.get(base_url+'/get_pixels', headers=dict(Authorization='Bearer ' + api_token))
+    a = requests.get(f"{base_url}/get_pixels", headers=HEADERS)
+    print(f"Response:{a.text}\nHeaders:{a.headers}")
     a.raise_for_status()
     Image.frombytes('RGB', (160, 90), a.content).save('2.png')
 
 
+@cli.command()
 def do_webhook() -> None:
     """Gets the current image it displays it on screen."""
-    a = requests.post('https://pixels.pythondiscord.com/webhook', headers=dict(Authorization='Bearer ' + api_token))
+    a = requests.post(f"{base_url}/webhook", headers=HEADERS)
+    print(f"Response:{a.text}\nHeaders:{a.headers}")
     a.raise_for_status()
 
 
-def generate_coordinates() -> list:
-    """Generates the list of coordinates to populate."""
-    coordinates = []
-    for x in range(0, 160):
-        for y in range(0, 90):
-            coordinates.append((x, y))
-
-    return coordinates
-
-
-def set_pixel(coordinate: list) -> None:
+@cli.command()
+@click.option("--x", prompt=True, type=int)
+@click.option("--y", prompt=True, type=int)
+def set_pixel(x: int, y: int) -> None:
     """Sets the coordinate to a random colour."""
     [r, g, b] = [math.ceil(x * 255) for x in colorsys.hsv_to_rgb(random.random() * 0.089, 0.8, 1)]
 
-    resp = httpx.post(base_url+"/set_pixel", json={
-        "x": coordinate[0],
-        "y": coordinate[1],
-        "rgb": f"{r:02x}{g:02x}{b:02x}"
-    }, headers=HEADERS)
-    resp.raise_for_status()
-    print(resp.text)
+    a = requests.post(
+        f"{base_url}/set_pixel",
+        json={
+            "x": x,
+            "y": y,
+            "rgb": f"{r:02x}{g:02x}{b:02x}"
+        },
+        headers=HEADERS
+    )
+    print(f"Response:{a.text}\nHeaders:{a.headers}")
+    a.raise_for_status()
 
 
 if __name__ == "__main__":
-    with multiprocessing.Pool(5) as p:
-        p.map(set_pixel, generate_coordinates())
+    cli()
