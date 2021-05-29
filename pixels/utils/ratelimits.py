@@ -4,6 +4,7 @@ import asyncio
 import functools
 import hashlib
 import inspect
+import itertools
 import logging
 import typing
 import uuid
@@ -13,6 +14,7 @@ from time import time
 
 import fastapi
 from aioredis import Redis
+from fastapi import requests
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
@@ -66,7 +68,7 @@ class __BucketBase:
         :param bypass: A function that can override the regular rate limit checks.
         """
         # Instance management
-        self.request_id = 0
+        self.request_id = itertools.count(0)
         self.state: __BucketBase._STATE = {}
 
         # Bucket Params
@@ -95,6 +97,8 @@ class __BucketBase:
 
     def __call__(self, *args):
         """Wrap the route in a custom caller, and pass it to the route manager."""
+        from pixels.pixels import app  # Local import to avoid circular dependencies
+
         route_callback: typing.Callable = args[0]
         if not isinstance(route_callback, typing.Callable):
             raise Exception("First parameter of rate limiter must be a function.")
@@ -104,12 +108,32 @@ class __BucketBase:
             self.ROUTES.append(function_hash)
             self.ROUTE_NAME = "|".join(self.ROUTES)
 
+        # Add an HEAD endpoint to get rate limit details
+        @app.head("/" + route_callback.__name__)
+        async def head_endpoint(request: requests.Request) -> Response:
+            response = Response()
+
+            request_id = next(self.request_id)
+            await self._pre_call(request_id, request)
+            await self._init_state(request_id, request)
+
+            if await self._check_cooldown(request_id):
+                response.headers["CooldownReset"] = str(
+                    await self._get_remaining_cooldown(request_id)
+                )
+            else:
+                remaining_requests = await self.get_remaining_requests(request_id)
+
+                response.headers.append("Requests-Remaining", str(remaining_requests))
+                response.headers.append("Requests-Limit", str(self.LIMITS.requests))
+                response.headers.append("Requests-Reset", str(self.LIMITS.time_unit))
+            return response
+
         # functools.wraps is used here to wrap the endpoint while maintaining the signature
         @functools.wraps(route_callback)
         async def caller(*_args, **_kwargs) -> typing.Union[JSONResponse, Response]:
             # Instantiate request attributes
-            request_id = self.request_id
-            self.request_id += 1
+            request_id = next(self.request_id)
 
             request: fastapi.Request = _kwargs['request']
             response: typing.Optional[typing.Union[JSONResponse, Response]] = None
