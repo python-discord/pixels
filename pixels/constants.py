@@ -26,7 +26,7 @@ base_width = 16
 base_height = 9
 
 # For ease of scaling
-mutliplyer = 13
+mutliplyer = 15
 width = base_width * mutliplyer
 height = base_height * mutliplyer
 
