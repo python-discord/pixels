@@ -24,8 +24,8 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./logs:/app/logs
-      - .:/app:ro
+      - ./logs:/pixels/logs
+      - .:/pixels:ro
     tty: true
     depends_on:
       - postgres
