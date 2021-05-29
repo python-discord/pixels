@@ -118,15 +118,12 @@ class __BucketBase:
             await self._init_state(request_id, request)
 
             if await self._check_cooldown(request_id):
-                response.headers["CooldownReset"] = str(
-                    await self._get_remaining_cooldown(request_id)
+                response.headers.append(
+                    "Cooldown-Reset",
+                    str(await self._get_remaining_cooldown(request_id))
                 )
             else:
-                remaining_requests = await self.get_remaining_requests(request_id)
-
-                response.headers.append("Requests-Remaining", str(remaining_requests))
-                response.headers.append("Requests-Limit", str(self.LIMITS.requests))
-                response.headers.append("Requests-Reset", str(self.LIMITS.time_unit))
+                await self.add_headers(response, request_id)
             return response
 
         # functools.wraps is used here to wrap the endpoint while maintaining the signature
@@ -172,11 +169,7 @@ class __BucketBase:
                     clean_result = jsonable_encoder(result)
                     response = JSONResponse(content=clean_result)
 
-                remaining_requests = await self.get_remaining_requests(request_id)
-
-                response.headers.append("Requests-Remaining", str(remaining_requests))
-                response.headers.append("Requests-Limit", str(self.LIMITS.requests))
-                response.headers.append("Requests-Reset", str(self.LIMITS.time_unit))
+                await self.add_headers(response, request_id)
 
             # Setup post interaction tasks
             state = self.state[request_id]
@@ -194,6 +187,16 @@ class __BucketBase:
             return response
 
         return caller
+
+    async def add_headers(self, response: Response, request_id: int) -> None:
+        """Add ratelimit headers to the provided request."""
+        remaining_requests = await self.get_remaining_requests(request_id)
+        request_reset = await self._reset_time(request_id)
+
+        response.headers.append("Requests-Remaining", str(remaining_requests))
+        response.headers.append("Requests-Limit", str(self.LIMITS.requests))
+        response.headers.append("Requests-Period", str(self.LIMITS.time_unit))
+        response.headers.append("Requests-Reset", str(request_reset))
 
     async def _increment(self, request_id: int) -> None:
         """Reduce remaining quota, and check if a cooldown is needed."""
@@ -239,6 +242,10 @@ class __BucketBase:
 
     async def _get_remaining_cooldown(self, request_id: int) -> int:
         """Return the time, in seconds, until a cooldown ends."""
+        raise NotImplementedError()
+
+    async def _reset_time(self, request_id: int) -> int:
+        """Return the time, in seconds, before getting every interaction back."""
         raise NotImplementedError()
 
 
@@ -309,3 +316,11 @@ class UserRedis(__BucketBase):
         key = f"cooldown-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
 
         return await self.redis.ttl(key)
+
+    async def _reset_time(self, request_id: int) -> int:
+        key = f"interaction-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
+
+        if not (newest_uuid := await self.redis.zrange(key, 0, 0)):
+            return -1
+
+        return await self.redis.zscore(key, newest_uuid[0]) - time()
