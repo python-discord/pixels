@@ -47,7 +47,7 @@ class Canvas:
             position = record["y"] * constants.width + record["x"]
             cache[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
 
-        await self.redis.set("canvas-cache", cache)
+        await self.redis.set(f"{constants.git_sha}-canvas-cache", cache)
 
         log.info(f"Cache updated finished! (took {time() - start_time}s)")
         await conn.execute("UPDATE cache_state SET last_synced = now()")
@@ -122,15 +122,15 @@ class Canvas:
 
             # Update the cache
             position = (y * constants.width + x) * 3
-            await self.redis.setrange("canvas-cache", position, bytes.fromhex(rgb))
+            await self.redis.setrange(f"{constants.git_sha}-canvas-cache", position, bytes.fromhex(rgb))
 
             await conn.execute("UPDATE cache_state SET last_synced = now()")
 
     async def get_pixels(self) -> bytearray:
         """Returns the whole board."""
-        return await self.redis.get("canvas-cache")
+        return await self.redis.get(f"{constants.git_sha}-canvas-cache")
 
     async def get_pixel(self, x: int, y: int) -> bytearray:
         """Returns a single pixel from the board."""
         position = (y * constants.width + x) * 3
-        return await self.redis.getrange("canvas-cache", position, position+2)
+        return await self.redis.getrange(f"{constants.git_sha}-canvas-cache", position, position+2)
