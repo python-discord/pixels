@@ -39,7 +39,6 @@ pre-commit = "~=2.1"
 requests = "~=2.25.1"
 click = "~=8.0.1"
 taskipy = "~=1.7.0"
-python-dotenv = "~=0.17.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
