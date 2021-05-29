@@ -196,7 +196,7 @@ class __BucketBase:
         response.headers.append("Requests-Remaining", str(remaining_requests))
         response.headers.append("Requests-Limit", str(self.LIMITS.requests))
         response.headers.append("Requests-Period", str(self.LIMITS.time_unit))
-        response.headers.append("Requests-Reset", str(request_reset))
+        response.headers.append("Requests-Reset", str(request_reset)[:6])
 
     async def _increment(self, request_id: int) -> None:
         """Reduce remaining quota, and check if a cooldown is needed."""
