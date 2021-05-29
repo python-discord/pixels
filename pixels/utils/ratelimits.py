@@ -321,6 +321,6 @@ class UserRedis(__BucketBase):
         key = f"interaction-{self.ROUTE_NAME}-{self.state[request_id].user_id}"
 
         if not (newest_uuid := await self.redis.zrange(key, 0, 0)):
-            return -1
+            return 0
 
         return await self.redis.zscore(key, newest_uuid[0]) - time()
