@@ -17,13 +17,13 @@ DB_POOL = asyncpg.create_pool(
     "postgres://pypixels:pypixels@127.0.0.1:5000/pypixels"
 )
 
-MAX_WIDTH = 160
-MAX_HEIGHT = 90
+MAX_WIDTH = 240
+MAX_HEIGHT = 135
 
-START_DATE = datetime(2021, 5, 24, 23, 15)
-END_DATE = datetime(2021, 5, 27, 17)
-INVERAL_DELTA = timedelta(minutes=15)
-FPS = 15
+START_DATE = datetime(2021, 5, 24, 23, 9)
+END_DATE = datetime(2021, 5, 30, 23, 9)
+INVERAL_DELTA = timedelta(minutes=5)
+FPS = 30
 
 log = logging.getLogger()
 format_string = "[%(asctime)s] [%(process)d] [%(levelname)s] %(name)s - %(message)s"
@@ -77,12 +77,19 @@ async def fetch_one_snapshot(pool: Pool, time: datetime) -> Snapshot:
 async def get_snapshots() -> t.List[Snapshot]:
     """Fetch snapshots from the db using a connection pool."""
     pool = await DB_POOL
-    times = datetime_range(START_DATE, END_DATE, INVERAL_DELTA)
-    tasks = [
-        fetch_one_snapshot(pool, time)
-        for time in times
-    ]
-    return await asyncio.gather(*tasks)
+    times = [*datetime_range(START_DATE, END_DATE, INVERAL_DELTA)]
+
+    snapshots: t.List[Snapshot] = []
+
+    batch_size = 100
+    total_blocks = (len(times) // batch_size) + 1
+    for i in range(total_blocks):
+        log.info(f"Running block {i+1} of {total_blocks}")
+        snapshots += await asyncio.gather(*[
+            fetch_one_snapshot(pool, time)
+            for time in times[i*100:(i+1)*100]
+        ])
+    return snapshots
 
 
 log.info("Starting DB extract...")
