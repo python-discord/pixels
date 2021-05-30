@@ -1,6 +1,7 @@
 # Project specific
 postgres/*.csv
 timelapse.mp4
+frames.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
