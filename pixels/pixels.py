@@ -359,7 +359,7 @@ async def pixel_history(
     conn = request.state.db_conn
 
     sql = """
-    select user_id
+    select user_id::text
     from pixel_history
     where x=$1
     and y=$2
