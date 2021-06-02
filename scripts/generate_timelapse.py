@@ -24,7 +24,7 @@ END_DATE = datetime(2021, 6, 2, 20, 31)
 INTERVAL_DELTA = timedelta(minutes=1)
 FPS = 120
 
-_EXECUTOR = ThreadPoolExecutor(10)
+_EXECUTOR = ThreadPoolExecutor(5)
 
 log = logging.getLogger()
 format_string = "[%(asctime)s] [%(process)d] [%(levelname)s] %(name)s - %(message)s"
@@ -72,7 +72,7 @@ async def save_one_snapshot(pool: Pool, time: datetime) -> None:
                 position = record["y"] * MAX_WIDTH + record["x"]
                 cache[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
 
-    interval_offset = (time - START_DATE).seconds // INTERVAL_DELTA.seconds
+    interval_offset = (time - START_DATE).total_seconds() // INTERVAL_DELTA.seconds
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(_EXECUTOR, save_image, cache, f"timelapse_output/frames/frame{interval_offset}.png")
 
