@@ -3,9 +3,10 @@ import logging
 from pixels.pixels import app  # noqa: F401 Unused import
 
 
-ENDPOINTS_TO_FILTER_OUT = [
-    "/set_pixel"
-]
+ENDPOINTS_TO_FILTER_OUT = (
+    "/set_pixel",
+    "/get_size"
+)
 
 
 class EndpointFilter(logging.Filter):
