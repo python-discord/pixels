@@ -20,10 +20,10 @@ DB_POOL = asyncpg.create_pool(
 MAX_WIDTH = 240
 MAX_HEIGHT = 135
 
-START_DATE = datetime(2021, 5, 24, 23, 9)
-END_DATE = datetime(2021, 5, 30, 23, 9)
-INTERVAL_DELTA = timedelta(minutes=5)
-FPS = 30
+START_DATE = datetime(2021, 5, 24, 23, 10)
+END_DATE = datetime(2021, 6, 2, 14, 50)
+INTERVAL_DELTA = timedelta(minutes=1)
+FPS = 60
 
 log = logging.getLogger()
 format_string = "[%(asctime)s] [%(process)d] [%(levelname)s] %(name)s - %(message)s"
@@ -107,11 +107,15 @@ snapshots = sorted(snapshots, key=attrgetter("time"))
 
 Path("frames").mkdir()
 
-for i, snapshot in enumerate(snapshots):
-    snapshot: Snapshot
-    image = Image.frombytes("RGB", (MAX_WIDTH, MAX_HEIGHT), bytes(snapshot.pixels))
-    image = image.resize((1600, 900), Image.NEAREST)
-    image.save(f"frames/frame{i}.png", format="png")
+batch_size = 100
+total_blocks = (len(snapshots) // batch_size) + 1
+for i in range(total_blocks):
+    log.info(f"Running block {i+1} of {total_blocks}")
+    for j, snapshot in enumerate(snapshots[i*100:(i+1)*100]):
+        snapshot: Snapshot
+        image = Image.frombytes("RGB", (MAX_WIDTH, MAX_HEIGHT), bytes(snapshot.pixels))
+        image = image.resize((1600, 900), Image.NEAREST)
+        image.save(f"timelapse_output/frames/frame{j}.png", format="png")
 log.info(f"Transformation done. Took {perf_counter()-start:.2f}s")
 
 log.info("Saving frames to a mp4...")
@@ -123,7 +127,7 @@ os.system(
     r"-i ./frames/frame%01d.png "  # Image source
     "-vcodec libx264 -crf 25 -pix_fmt yuv420p "  # Formats and codecs
     "-y "  # Skip confirm
-    "./timelapse.mp4"  # Output file.
+    "./timelapse_output/timelapse.mp4"  # Output file.
 )
 log.info(f"MP4 saving done. Took {perf_counter()-start:.2f}s")
 
