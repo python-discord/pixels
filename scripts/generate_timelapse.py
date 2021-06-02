@@ -22,7 +22,7 @@ MAX_HEIGHT = 135
 
 START_DATE = datetime(2021, 5, 24, 23, 9)
 END_DATE = datetime(2021, 5, 30, 23, 9)
-INVERAL_DELTA = timedelta(minutes=5)
+INTERVAL_DELTA = timedelta(minutes=5)
 FPS = 30
 
 log = logging.getLogger()
@@ -77,7 +77,7 @@ async def fetch_one_snapshot(pool: Pool, time: datetime) -> Snapshot:
 async def get_snapshots() -> t.List[Snapshot]:
     """Fetch snapshots from the db using a connection pool."""
     pool = await DB_POOL
-    times = [*datetime_range(START_DATE, END_DATE, INVERAL_DELTA)]
+    times = [*datetime_range(START_DATE, END_DATE, INTERVAL_DELTA)]
 
     snapshots: t.List[Snapshot] = []
 
