@@ -48,7 +48,6 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["GET", "HEAD"],
     allow_headers=["*"],
-    allow_credentials=True,
 )
 app.mount("/static", StaticFiles(directory="pixels/static"), name="static")
 
