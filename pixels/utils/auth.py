@@ -1,42 +1,50 @@
 import logging
 import secrets
-import typing as t
 
 from asyncpg import Connection
-from fastapi.security.utils import get_authorization_scheme_param
+from fastapi import HTTPException, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
 from pixels import constants
-from pixels.models import AuthResult, AuthState
+from pixels.models import AuthState
 
 log = logging.getLogger(__name__)
 
 
-async def authorized(conn: Connection, authorization: t.Optional[str]) -> AuthResult:
-    """Attempt to authorize the user given a token and a database connection."""
-    if authorization is None:
-        return AuthResult(AuthState.NO_TOKEN, None)
-    scheme, token = get_authorization_scheme_param(authorization)
-    if scheme.lower() != "bearer":
-        return AuthResult(AuthState.BAD_HEADER, None)
-    try:
-        token_data = jwt.decode(token, constants.jwt_secret)
-    except JWTError:
-        return AuthResult(AuthState.INVALID_TOKEN, None)
-    else:
-        user_id = token_data["id"]
-        token_salt = token_data["salt"]
-        user_state = await conn.fetchrow(
-            "SELECT is_banned, is_mod, key_salt FROM users WHERE user_id = $1;", int(user_id),
-        )
-        if user_state is None or user_state["key_salt"] != token_salt:
-            return AuthResult(AuthState.INVALID_TOKEN, None)
-        elif user_state["is_banned"]:
-            return AuthResult(AuthState.BANNED, int(user_id))
-        elif user_state["is_mod"]:
-            return AuthResult(AuthState.MODERATOR, int(user_id))
+class JWTBearer(HTTPBearer):
+    """Dependancy for routes to enforce JWT auth."""
+
+    def __init__(self, auto_error: bool = True, is_mod_endpoint: bool = False):
+        super(JWTBearer, self).__init__(auto_error=auto_error)
+        self.is_mod_endpoint = is_mod_endpoint
+
+    async def __call__(self, request: Request):
+        """Check if the supplied credentials are valid for this endpoint."""
+        credentials: HTTPAuthorizationCredentials = await super(JWTBearer, self).__call__(request)
+        credentials = credentials.credentials
+        if credentials:
+            try:
+                token_data = jwt.decode(credentials, constants.jwt_secret)
+            except JWTError:
+                raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
+            else:
+                user_id = token_data["id"]
+                token_salt = token_data["salt"]
+                user_state = await request.state.db_conn.fetchrow(
+                    "SELECT is_banned, is_mod, key_salt FROM users WHERE user_id = $1;", int(user_id),
+                )
+                if user_state is None or user_state["key_salt"] != token_salt:
+                    raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
+                elif user_state["is_banned"]:
+                    raise HTTPException(status_code=403, detail=AuthState.BANNED.value)
+                elif self.is_mod_endpoint and not user_state["is_mod"]:
+                    raise HTTPException(status_code=403, detail=AuthState.NEEDS_MODERATOR.value)
+                else:
+                    request.state.user_id = int(user_id)
+                    return credentials
         else:
-            return AuthResult(AuthState.USER, int(user_id))
+            raise HTTPException(status_code=403, detail=AuthState.NO_TOKEN)
 
 
 async def reset_user_token(conn: Connection, user_id: str) -> str:

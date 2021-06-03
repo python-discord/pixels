@@ -12,15 +12,16 @@ from time import time
 
 import fastapi
 from aioredis import Redis
-from fastapi import APIRouter, requests
+from fastapi import APIRouter, Depends, requests
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
 from pixels import constants
+from pixels.utils import auth
 
 log = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(auth.JWTBearer())])
 
 
 class __BucketBase:
@@ -261,8 +262,6 @@ class UserRedis(__BucketBase):
     redis: typing.Optional[Redis] = None
 
     async def _pre_call(self, _request_id: int, request: fastapi.Request, *args, **kwargs) -> None:
-        request.state.auth.raise_if_failed()
-
         if not self.redis:
             try:
                 self.redis = await constants.REDIS_FUTURE
@@ -272,7 +271,7 @@ class UserRedis(__BucketBase):
     async def _init_state(self, request_id: int, request: fastapi.Request) -> None:
         self.state.update({
             request_id: self._StateVariables(
-                remaining_requests=None, clean_up_tasks=[], user_id=request.state.auth.user_id
+                remaining_requests=None, clean_up_tasks=[], user_id=request.state.user_id
             )
         })
 

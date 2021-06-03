@@ -13,7 +13,7 @@ from starlette.responses import RedirectResponse
 from pixels import constants
 from pixels.canvas import Canvas
 from pixels.endpoints import authorization, general, moderation
-from pixels.utils import auth, ratelimits
+from pixels.utils import ratelimits
 
 log = logging.getLogger(__name__)
 
@@ -52,20 +52,6 @@ def custom_openapi() -> dict[str, t.Any]:
         version="1.0.0",
         routes=app.routes,
     )
-    openapi_schema["components"]["securitySchemes"] = {
-        "Bearer": {
-            "type": "http",
-            "scheme": "Bearer"
-        }
-    }
-    for route in app.routes:
-        # Use getattr as not all routes have this attr
-        if not getattr(route, "include_in_schema", False):
-            continue
-        # For each method the path provides insert the Bearer security type
-        # So RapiDoc knows how to auth for that endpoint
-        for method in route.methods:
-            openapi_schema["paths"][route.path][method.lower()]["security"] = [{"Bearer": []}]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -130,7 +116,6 @@ async def setup_data(request: Request, callnext: t.Callable) -> Response:
         request.state.db_conn = connection
         request.state.canvas = canvas
         request.state.redis_pool = redis_pool
-        request.state.auth = await auth.authorized(connection, request.headers.get("Authorization"))
         response = await callnext(request)
     request.state.db_conn = None
     request.state.canvas = None
