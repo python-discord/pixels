@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import shutil
 import typing as t
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -20,7 +19,7 @@ MAX_WIDTH = 240
 MAX_HEIGHT = 135
 
 START_DATE = datetime(2021, 5, 24, 23, 10)
-END_DATE = datetime(2021, 6, 2, 20, 31)
+END_DATE = datetime(2021, 6, 3, 8, 36)
 INTERVAL_DELTA = timedelta(minutes=1)
 FPS = 120
 
@@ -72,7 +71,7 @@ async def save_one_snapshot(pool: Pool, time: datetime) -> None:
                 position = record["y"] * MAX_WIDTH + record["x"]
                 cache[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
 
-    interval_offset = (time - START_DATE).total_seconds() // INTERVAL_DELTA.seconds
+    interval_offset = int((time - START_DATE).total_seconds() // INTERVAL_DELTA.seconds)
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(_EXECUTOR, save_image, cache, f"timelapse_output/frames/frame{interval_offset}.png")
 
@@ -113,8 +112,3 @@ os.system(
     "./timelapse_output/timelapse.mp4"  # Output file.
 )
 log.info(f"MP4 saving done. Took {perf_counter()-start:.2f}s")
-
-log.info("Cleaning up files...")
-start = perf_counter()
-shutil.rmtree("frames")
-log.info(f"Cleaning done. Took {perf_counter()-start:.2f}s")
