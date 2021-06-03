@@ -12,13 +12,15 @@ from time import time
 
 import fastapi
 from aioredis import Redis
-from fastapi import requests
+from fastapi import APIRouter, requests
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
 from pixels import constants
 
 log = logging.getLogger(__name__)
+
+router = APIRouter()
 
 
 class __BucketBase:
@@ -95,8 +97,6 @@ class __BucketBase:
 
     def __call__(self, *args):
         """Wrap the route in a custom caller, and pass it to the route manager."""
-        from pixels.pixels import app  # Local import to avoid circular dependencies
-
         route_callback: typing.Callable = args[0]
         if not isinstance(route_callback, typing.Callable):
             raise Exception("First parameter of rate limiter must be a function.")
@@ -107,7 +107,7 @@ class __BucketBase:
             self.ROUTE_NAME = "|".join(self.ROUTES)
 
         # Add an HEAD endpoint to get rate limit details
-        @app.head("/" + route_callback.__name__)
+        @router.head("/" + route_callback.__name__, name=f"HEAD {route_callback.__name__}")
         async def head_endpoint(request: requests.Request) -> Response:
             response = Response()
 

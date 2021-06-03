@@ -4,6 +4,7 @@ from urllib.parse import unquote
 import asyncpg
 from decouple import config
 from fastapi import Query
+from fastapi.templating import Jinja2Templates
 
 
 database_url = config("DATABASE_URL")
@@ -56,3 +57,5 @@ REDIS_FUTURE = asyncio.Future()
 
 with open("pixels/resources/mods.txt") as f:
     mods = f.read().split()
+
+templates = Jinja2Templates(directory="pixels/templates")
