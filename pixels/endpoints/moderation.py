@@ -7,7 +7,7 @@ from datetime import datetime
 from functools import partial
 
 from PIL import Image
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from httpx import AsyncClient
 
 from pixels import constants
@@ -15,13 +15,16 @@ from pixels.models import Message, ModBan, PixelHistory, User
 from pixels.utils import auth
 
 log = logging.getLogger(__name__)
-router = APIRouter(tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide)
+router = APIRouter(
+    tags=["Moderation Endpoints"],
+    include_in_schema=constants.prod_hide,
+    dependencies=[Depends(auth.JWTBearer(is_mod_endpoint=True))]
+)
 
 
 @router.get("/mod", response_model=Message)
 async def mod_check(request: Request) -> Message:
     """Check if the authenticated user is a mod."""
-    request.state.auth.raise_unless_mod()
     return Message(message="Hello fellow moderator!")
 
 
@@ -29,7 +32,6 @@ async def mod_check(request: Request) -> Message:
 async def set_mod(request: Request, user: User) -> Message:
     """Make another user a mod."""
     user_id = user.user_id
-    request.state.auth.raise_unless_mod()
     conn = request.state.db_conn
     async with conn.transaction():
         user_state = await conn.fetchrow(
@@ -52,8 +54,6 @@ async def set_mod(request: Request, user: User) -> Message:
 @router.post("/mod_ban", response_model=ModBan)
 async def ban_users(request: Request, user_list: list[User]) -> ModBan:
     """Ban users from using the API."""
-    request.state.auth.raise_unless_mod()
-
     conn = request.state.db_conn
     users = [user.user_id for user in user_list]
 
@@ -88,8 +88,6 @@ async def pixel_history(
         y: int = constants.y_query_validator
 ) -> t.Union[PixelHistory, Message]:
     """GET the user who edited the pixel with the given co-ordinates."""
-    request.state.auth.raise_unless_mod()
-
     conn = request.state.db_conn
 
     sql = """
@@ -114,8 +112,6 @@ async def pixel_history(
 @router.post("/webhook", response_model=Message)
 async def webhook(request: Request) -> Message:
     """Send or update Discord webhook image."""
-    request.state.auth.raise_unless_mod()
-
     last_message_id = await request.state.redis_pool.get("last-webhook-message")
 
     now = datetime.now()
@@ -201,8 +197,6 @@ async def webhook(request: Request) -> Message:
 @router.delete("/token")
 async def reset_token(request: Request) -> Response:
     """Reset an API token."""
-    request.state.auth.raise_if_failed()
-
-    await auth.reset_user_token(request.state.db_conn, request.state.auth.user_id)
+    await auth.reset_user_token(request.state.db_conn, request.state.user_id)
 
     return Response(status_code=204)

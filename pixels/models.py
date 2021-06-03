@@ -2,7 +2,6 @@ import enum
 import re
 import typing as t
 
-from fastapi import HTTPException
 from pydantic import BaseModel, validator
 
 from pixels import constants
@@ -75,45 +74,7 @@ class AuthState(enum.Enum):
     BAD_HEADER = "The Authorization header does not specify the Bearer scheme."
     INVALID_TOKEN = "The token provided is not a valid token or has expired, navigate to /authorize to get a new one."
     BANNED = "You are banned."
-    MODERATOR = "This token belongs to a moderator"
-    USER = "This token belongs to a regular user"
-
-    def __bool__(self) -> bool:
-        """Return whether the authorization was successful."""
-        return self == AuthState.USER or self == AuthState.MODERATOR
-
-    def raise_if_failed(self) -> None:
-        """Raise an HTTPException if a user isn't authorized."""
-        if self:
-            return
-        raise HTTPException(status_code=403, detail=self.value)
-
-    def raise_unless_mod(self) -> None:
-        """Raise an HTTPException if a moderator isn't authorized."""
-        if self == AuthState.MODERATOR:
-            return
-        elif self == AuthState.USER:
-            raise HTTPException(status_code=403, detail="This endpoint is limited to moderators")
-        self.raise_if_failed()
-
-
-class AuthResult(t.NamedTuple):
-    """The possible outcomes of authorization with the user id."""
-
-    state: AuthState
-    user_id: t.Optional[int]
-
-    def __bool__(self) -> bool:
-        """Return whether the authorization was successful."""
-        return bool(self.state)
-
-    def raise_if_failed(self) -> None:
-        """Raise an HTTPException if a user isn't authorized."""
-        self.state.raise_if_failed()
-
-    def raise_unless_mod(self) -> None:
-        """Raise an HTTPException if a moderator isn't authorized."""
-        self.state.raise_unless_mod()
+    NEEDS_MODERATOR = "This endpoint is limited to moderators"
 
 
 class Message(BaseModel):

@@ -1,13 +1,13 @@
 import logging
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from pixels import constants
 from pixels.models import GetSize, Message, Pixel
-from pixels.utils import ratelimits
+from pixels.utils import auth, ratelimits
 
 log = logging.getLogger(__name__)
-router = APIRouter(tags=["Canvas Endpoints"])
+router = APIRouter(tags=["Canvas Endpoints"], dependencies=[Depends(auth.JWTBearer())])
 
 
 @router.get("/get_size", response_model=GetSize)
@@ -76,7 +76,6 @@ async def get_pixels(request: Request) -> Response:
     # have fun processing the returned data...
     ```
     """
-    request.state.auth.raise_if_failed()
     # The cast to bytes here is needed by FastAPI ¯\_(ツ)_/¯
     return Response(bytes(await request.state.canvas.get_pixels()),
                     media_type="application/octet-stream")
@@ -116,8 +115,6 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     print("Here's the colour of the pixel:", r.json()["rgb"])
     ```
     """
-    request.state.auth.raise_if_failed()
-
     if x >= constants.width or y >= constants.height:
         raise HTTPException(400, "Pixel is out of the canvas bounds.")
     pixel_data = await request.state.canvas.get_pixel(x, y)
@@ -161,7 +158,6 @@ async def set_pixel(request: Request, pixel: Pixel) -> Message:
     print(f"We got a message back! {payload['message']}")
     ```
     """
-    request.state.auth.raise_if_failed()
-    log.info(f"{request.state.auth.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
-    await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.auth.user_id)
+    log.info(f"{request.state.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
+    await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.user_id)
     return Message(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
