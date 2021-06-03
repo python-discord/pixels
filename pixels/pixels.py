@@ -12,6 +12,7 @@ import aioredis
 from PIL import Image
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi.security.utils import get_authorization_scheme_param
@@ -41,6 +42,12 @@ log = logging.getLogger(__name__)
 app = FastAPI(
     docs_url=None,
     redoc_url=None,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "HEAD"],
+    allow_headers=["*"],
 )
 app.mount("/static", StaticFiles(directory="pixels/static"), name="static")
 
