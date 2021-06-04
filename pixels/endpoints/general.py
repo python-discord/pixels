@@ -10,8 +10,8 @@ log = logging.getLogger(__name__)
 router = APIRouter(tags=["Canvas Endpoints"], dependencies=[Depends(auth.JWTBearer())])
 
 
-@router.get("/get_size", response_model=GetSize)
-async def get_size(request: Request) -> GetSize:
+@router.get("/size", response_model=GetSize)
+async def size(request: Request) -> GetSize:
     """
     Get the size of the pixels canvas.
 
@@ -37,7 +37,7 @@ async def get_size(request: Request) -> GetSize:
     return GetSize(width=constants.width, height=constants.height)
 
 
-@router.get("/get_pixels", response_class=Response, responses={
+@router.get("/pixels", response_class=Response, responses={
     200: {
         "description": "Successful Response.",
         "content": {
@@ -51,7 +51,7 @@ async def get_size(request: Request) -> GetSize:
     }
 })
 @ratelimits.UserRedis(requests=5, time_unit=10, cooldown=60)
-async def get_pixels(request: Request) -> Response:
+async def pixels(request: Request) -> Response:
     """
     Get the current state of all pixels from the database.
 
@@ -81,7 +81,7 @@ async def get_pixels(request: Request) -> Response:
                     media_type="application/octet-stream")
 
 
-@router.get("/get_pixel", response_model=Pixel)
+@router.get("/pixel", response_model=Pixel)
 @ratelimits.UserRedis(requests=8, time_unit=10, cooldown=120)
 async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     """
@@ -122,9 +122,9 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     return Pixel(x=x, y=y, rgb=''.join(f"{x:02x}" for x in pixel_data))
 
 
-@router.post("/set_pixel", response_model=Message)
+@router.put("/pixel", response_model=Message)
 @ratelimits.UserRedis(requests=2, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=int(constants.PIXEL_RATE_LIMIT * 1.5))
-async def set_pixel(request: Request, pixel: Pixel) -> Message:
+async def put_pixel(request: Request, pixel: Pixel) -> Message:
     """
     Override the pixel at the specified position with the specified color.
 

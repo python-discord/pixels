@@ -108,7 +108,7 @@ class __BucketBase:
             self.ROUTE_NAME = "|".join(self.ROUTES)
 
         # Add an HEAD endpoint to get rate limit details
-        @router.head("/" + route_callback.__name__, name=f"HEAD {route_callback.__name__}")
+        @router.head("/" + route_callback.__name__, name=f"{route_callback.__name__} rate limit")
         async def head_endpoint(request: requests.Request) -> Response:
             response = Response()
 
