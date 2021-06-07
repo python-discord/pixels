@@ -340,7 +340,7 @@ async def ban_users(request: Request, user_list: t.List[User]) -> ModBan:
     sql = "UPDATE pixel_history SET deleted=TRUE where user_id=any($1::bigint[])"
     await conn.execute(sql, db_users)
 
-    await canvas.sync_cache(conn)
+    await canvas.sync_cache(conn, skip_check=True)
 
     resp = {"banned": db_users, "not_found": []}
     if non_db_users:

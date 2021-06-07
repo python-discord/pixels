@@ -68,16 +68,22 @@ class Canvas:
         record, = await conn.fetch("SELECT last_modified, last_synced FROM cache_state")
         return record["last_modified"] > record["last_synced"]
 
-    async def sync_cache(self, conn: Connection) -> None:
-        """Make sure that the cache is up-to-date."""
+    async def sync_cache(self, conn: Connection, *, skip_check: bool = False) -> None:
+        """
+        Make sure that the cache is up-to-date.
+
+        `skip_check` is used when you want to force a canvas refresh, ignoring the
+        stored cache state in the db.
+        """
         lock_cleared = False
 
-        while await self.is_cache_out_of_date(conn):
+        while skip_check or await self.is_cache_out_of_date(conn):
             log.info("Cache will be updated")
 
             if await self._try_acquire_lock(conn) or lock_cleared:
                 log.info("Lock acquired. Starting synchronisation.")
                 lock_cleared = False
+                skip_check = False  # Don't infinite loop after refreshing cache.
                 try:
                     await self._populate_cache(conn)
                 # Use a finally block to make sure that the lock is freed
