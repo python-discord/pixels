@@ -24,15 +24,12 @@ webhook_url = config("WEBHOOK_URL")
 git_sha = config("GIT_SHA")
 
 # For ease of scaling
-# mutliplyer = 15
-# width = 16 * mutliplyer
-# height = 9 * mutliplyer
-
-width = 64
-height = 64
+mutliplyer = 17
+width = 16 * mutliplyer
+height = 9 * mutliplyer
 
 # We want to push a larger image to Discord for visibility
-webhook_size = (640, 640)
+webhook_size = (1600, 900)
 
 x_query_validator = Query(None, ge=0, lt=width)
 y_query_validator = Query(None, ge=0, lt=height)
