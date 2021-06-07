@@ -21,6 +21,8 @@ user_url = config("USER_URL", default="https://discord.com/api/users/@me")
 api_base = "https://discord.com/api/v8"
 webhook_url = config("WEBHOOK_URL")
 
+git_sha = config("GIT_SHA")
+
 # 16:9 is the aspect ratio of a guild banner
 base_width = 16
 base_height = 9
