@@ -79,5 +79,22 @@ def set_pixel(x: int, y: int) -> None:
     a.raise_for_status()
 
 
+@cli.command()
+@click.option("--x", prompt=True, type=int)
+@click.option("--y", prompt=True, type=int)
+def pixel_history(x: int, y: int) -> None:
+    """Sets the coordinate to a random colour."""
+    a = requests.get(
+        f"{base_url}/pixel_history",
+        params={
+            "x": x,
+            "y": y
+        },
+        headers=HEADERS
+    )
+    print(f"Response:{a.text}\nHeaders:{a.headers}")
+    a.raise_for_status()
+
+
 if __name__ == "__main__":
     cli()

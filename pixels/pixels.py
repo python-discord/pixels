@@ -12,6 +12,7 @@ import aioredis
 from PIL import Image
 from asyncpg import Connection
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi.security.utils import get_authorization_scheme_param
@@ -41,6 +42,12 @@ log = logging.getLogger(__name__)
 app = FastAPI(
     docs_url=None,
     redoc_url=None,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "HEAD"],
+    allow_headers=["*"],
 )
 app.mount("/static", StaticFiles(directory="pixels/static"), name="static")
 
@@ -359,7 +366,7 @@ async def pixel_history(
     conn = request.state.db_conn
 
     sql = """
-    select user_id
+    select user_id::text
     from pixel_history
     where x=$1
     and y=$2
@@ -503,7 +510,7 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
 
 
 @app.post("/set_pixel", tags=["Canvas Endpoints"], response_model=Message)
-@ratelimits.UserRedis(requests=2, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=int(constants.PIXEL_RATE_LIMIT * 1.5))
+@ratelimits.UserRedis(requests=5, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=int(constants.PIXEL_RATE_LIMIT * 1.5))
 async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
     Override the pixel at the specified position with the specified color.
