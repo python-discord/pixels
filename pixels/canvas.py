@@ -42,7 +42,13 @@ class Canvas:
 
         cache = bytearray(constants.width * constants.height * 3)
 
-        records = await conn.fetch("SELECT x, y, rgb FROM current_pixel")
+        sql = (
+            "SELECT x, y, rgb "
+            "FROM current_pixel "
+            "WHERE x < $1 "
+            "AND y < $2"
+        )
+        records = await conn.fetch(sql, constants.width, constants.height)
         for record in records:
             position = record["y"] * constants.width + record["x"]
             cache[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
