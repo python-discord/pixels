@@ -21,6 +21,8 @@ user_url = config("USER_URL", default="https://discord.com/api/users/@me")
 api_base = "https://discord.com/api/v8"
 webhook_url = config("WEBHOOK_URL")
 
+git_sha = config("GIT_SHA")
+
 # For ease of scaling
 mutliplyer = 15
 width = 16 * mutliplyer
