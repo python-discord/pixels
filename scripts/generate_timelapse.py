@@ -111,7 +111,7 @@ os.system(
     "-hide_banner -loglevel error "  # Silence output
     f"-r {FPS} "  # Output FPS
     r"-i ./timelapse_output/frames/frame%01d.png "  # Image source
-    "-vcodec libx264 -crf 35 -pix_fmt yuv420p "  # Formats and codecs
+    "-vcodec libx264 -crf 30 -pix_fmt yuv420p "  # Formats and codecs
     "-y "  # Skip confirm
     "./timelapse_output/timelapse.mp4"  # Output file.
 )
