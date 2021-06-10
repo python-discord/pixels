@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 asyncpg = "~=0.22"
 uvicorn = "~=0.13.4"
-fastapi = "~=0.63.0"
+fastapi = "~=0.65.2"
 python-decouple = "*"
 httpx = "*"
 python-jose = {extras = ["cryptography"],version = "*"}
