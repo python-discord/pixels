@@ -15,11 +15,11 @@ DB_POOL = asyncpg.create_pool(
     "postgres://pypixels:pypixels@127.0.0.1:5000/pypixels"
 )
 
-MAX_WIDTH = 240
-MAX_HEIGHT = 135
+MAX_WIDTH = 272
+MAX_HEIGHT = 153
 
 START_DATE = datetime(2021, 5, 24, 23, 10)
-END_DATE = datetime(2021, 6, 3, 8, 36)
+END_DATE = datetime(2021, 6, 10, 21, 13)
 INTERVAL_DELTA = timedelta(minutes=1)
 FPS = 120
 
@@ -52,6 +52,11 @@ def save_image(image_bytes: bytearray, filepath: str) -> None:
 
 async def save_one_snapshot(pool: Pool, time: datetime) -> None:
     """Gets a snapshot of the canvas at the given time."""
+    interval_offset = int((time - START_DATE).total_seconds() // INTERVAL_DELTA.seconds)
+    file_path = Path(f"timelapse_output/frames/frame{interval_offset}.png")
+    if file_path.is_file():
+        return
+
     sql = (
         "SELECT PH.x, PH.y, PH.rgb "
         "FROM ( "
@@ -71,9 +76,8 @@ async def save_one_snapshot(pool: Pool, time: datetime) -> None:
                 position = record["y"] * MAX_WIDTH + record["x"]
                 cache[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
 
-    interval_offset = int((time - START_DATE).total_seconds() // INTERVAL_DELTA.seconds)
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(_EXECUTOR, save_image, cache, f"timelapse_output/frames/frame{interval_offset}.png")
+    await loop.run_in_executor(_EXECUTOR, save_image, cache, file_path)
 
 
 async def get_snapshots() -> None:
@@ -107,7 +111,7 @@ os.system(
     "-hide_banner -loglevel error "  # Silence output
     f"-r {FPS} "  # Output FPS
     r"-i ./timelapse_output/frames/frame%01d.png "  # Image source
-    "-vcodec libx264 -crf 25 -pix_fmt yuv420p "  # Formats and codecs
+    "-vcodec libx264 -crf 30 -pix_fmt yuv420p "  # Formats and codecs
     "-y "  # Skip confirm
     "./timelapse_output/timelapse.mp4"  # Output file.
 )

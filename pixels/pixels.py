@@ -510,7 +510,7 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
 
 
 @app.post("/set_pixel", tags=["Canvas Endpoints"], response_model=Message)
-@ratelimits.UserRedis(requests=5, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=int(constants.PIXEL_RATE_LIMIT * 1.5))
+@ratelimits.UserRedis(requests=6, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=int(constants.PIXEL_RATE_LIMIT * 1.5))
 async def set_pixel(request: Request, pixel: Pixel) -> Message:
     """
     Override the pixel at the specified position with the specified color.

@@ -41,7 +41,7 @@ log_level = config("LOG_LEVEL", default="INFO")
 prod_hide = "true" != config("PRODUCTION", default="false")
 
 # How many seconds you have to wait before setting another pixel
-PIXEL_RATE_LIMIT = 180
+PIXEL_RATE_LIMIT = 120
 
 # Awaited in application startup
 DB_POOL = asyncpg.create_pool(
