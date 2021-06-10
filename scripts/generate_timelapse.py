@@ -15,11 +15,11 @@ DB_POOL = asyncpg.create_pool(
     "postgres://pypixels:pypixels@127.0.0.1:5000/pypixels"
 )
 
-MAX_WIDTH = 240
-MAX_HEIGHT = 135
+MAX_WIDTH = 272
+MAX_HEIGHT = 153
 
 START_DATE = datetime(2021, 5, 24, 23, 10)
-END_DATE = datetime(2021, 6, 10, 19, 53)
+END_DATE = datetime(2021, 6, 10, 21, 13)
 INTERVAL_DELTA = timedelta(minutes=1)
 FPS = 120
 
