@@ -15,9 +15,7 @@ WORKDIR /pixels
 COPY pyproject.toml poetry.lock ./
 RUN poetry install --no-dev
 
-# Copy in start script and config
-COPY ./start.sh /start.sh
-RUN chmod +x /start.sh
+# Copy in config
 COPY ./gunicorn_conf.py /gunicorn_conf.py
 
 # Define Git SHA build argument
@@ -33,4 +31,4 @@ EXPOSE 80
 
 # Run the start script, it will check for an /app/prestart.sh script (e.g. for migrations)
 # And then will start Gunicorn with Uvicorn
-CMD ["/start.sh"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-c", "/gunicorn_conf.py", "pixels:app"]
