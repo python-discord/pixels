@@ -4,7 +4,7 @@ import typing as t
 
 from pydantic import BaseModel, validator
 
-from pixels import constants
+from pixels.constants import Sizes
 
 _RGB_RE = re.compile(r"[0-9a-fA-F]{6}")
 
@@ -19,18 +19,18 @@ class Pixel(BaseModel):
     @validator("x")
     def x_must_be_lt_width(cls, x: int) -> int:
         """Ensure that x is within the bounds of the image."""
-        if 0 <= x < constants.width:
+        if 0 <= x < Sizes.width:
             return x
         else:
-            raise ValueError(f"x must be inside range(0, {constants.width})")
+            raise ValueError(f"x must be inside range(0, {Sizes.width})")
 
     @validator("y")
     def y_must_be_lt_height(cls, y: int) -> int:
         """Ensure that y is within the bounds of the image."""
-        if 0 <= y < constants.height:
+        if 0 <= y < Sizes.height:
             return y
         else:
-            raise ValueError(f"y must be inside range(0, {constants.height})")
+            raise ValueError(f"y must be inside range(0, {Sizes.height})")
 
     @validator("rgb")
     def rgb_must_be_valid_hex(cls, rgb: str) -> str:
@@ -47,7 +47,13 @@ class Pixel(BaseModel):
     class Config:
         """Additional settings for this model."""
 
-        schema_extra = {"example": {"x": constants.width // 2, "y": constants.height // 2, "rgb": "00FF00"}}
+        schema_extra = {
+            "example": {
+                "x": Sizes.width // 2,
+                "y": Sizes.height // 2,
+                "rgb": "00FF00"
+            }
+        }
 
 
 class User(BaseModel):

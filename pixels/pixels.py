@@ -10,8 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import RedirectResponse
 
-from pixels import constants
 from pixels.canvas import Canvas
+from pixels.constants import Connections, Server
 from pixels.endpoints import authorization, general, moderation
 from pixels.utils import ratelimits
 
@@ -57,7 +57,7 @@ app.openapi = custom_openapi
 async def my_exception_handler(request: Request, exception: StarletteHTTPException) -> Response:
     """Custom exception handler to render template for 404 error."""
     if exception.status_code == 404:
-        return constants.templates.TemplateResponse(
+        return Server.templates.TemplateResponse(
             name="not_found.html",
             context={"request": request},
             status_code=exception.status_code
@@ -77,30 +77,30 @@ async def startup() -> None:
     logging.basicConfig(
         format=format_string,
         datefmt=date_format_string,
-        level=getattr(logging, constants.log_level.upper())
+        level=getattr(logging, Server.log_level.upper())
     )
 
     # Init DB and Redis Connections
-    await constants.DB_POOL
+    await Connections.DB_POOL
 
-    app.state.redis_pool = await aioredis.create_redis_pool(constants.redis_url)
-    constants.REDIS_FUTURE.set_result(app.state.redis_pool)
+    app.state.redis_pool = await aioredis.create_redis_pool(Connections.redis_url)
+    Connections.REDIS_FUTURE.set_result(app.state.redis_pool)
 
     app.state.canvas = Canvas(app.state.redis_pool)
-    await app.state.canvas.sync_cache(await constants.DB_POOL.acquire())
+    await app.state.canvas.sync_cache(await Connections.DB_POOL.acquire())
 
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
     """Close down the app."""
     app.state.rate_limit_cleaner.cancel()
-    await constants.DB_POOL.close()
+    await Connections.DB_POOL.close()
 
 
 @app.middleware("http")
 async def setup_data(request: Request, callnext: t.Callable) -> Response:
     """Get a connection from the pool and a canvas reference for this request."""
-    async with constants.DB_POOL.acquire() as connection:
+    async with Connections.DB_POOL.acquire() as connection:
         request.state.db_conn = connection
         request.state.canvas = app.state.canvas
         request.state.redis_pool = app.state.redis_pool
@@ -124,4 +124,4 @@ async def info(request: Request) -> Response:
 async def docs(request: Request) -> Response:
     """Return the API docs."""
     template_name = "docs.html"
-    return constants.templates.TemplateResponse(template_name, {"request": request})
+    return Server.templates.TemplateResponse(template_name, {"request": request})

@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
-from pixels import constants
+from pixels.constants import Ratelimits, Sizes
 from pixels.models import GetSize, Message, Pixel
 from pixels.utils import auth, ratelimits
 
@@ -34,7 +34,7 @@ async def size(request: Request) -> GetSize:
     print(f"We got our canvas size! Height: {canvas_height}, Width: {canvas_width}.")
     ```
     """
-    return GetSize(width=constants.width, height=constants.height)
+    return GetSize(width=Sizes.width, height=Sizes.height)
 
 
 @router.get("/pixels", response_class=Response, responses={
@@ -115,7 +115,7 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     print("Here's the colour of the pixel:", r.json()["rgb"])
     ```
     """
-    if x >= constants.width or y >= constants.height:
+    if x >= Sizes.width or y >= Sizes.height:
         raise HTTPException(400, "Pixel is out of the canvas bounds.")
     pixel_data = await request.state.canvas.get_pixel(x, y)
 
@@ -123,7 +123,11 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
 
 
 @router.put("/pixel", response_model=Message)
-@ratelimits.UserRedis(requests=2, time_unit=constants.PIXEL_RATE_LIMIT, cooldown=int(constants.PIXEL_RATE_LIMIT * 1.5))
+@ratelimits.UserRedis(
+    requests=Ratelimits.PUT_PIXEL_AMOUNT,
+    time_unit=Ratelimits.PUT_PIXEL_RATE_LIMIT,
+    cooldown=Ratelimits.PUT_PIXEL_RATE_COOLDOWN
+)
 async def put_pixel(request: Request, pixel: Pixel) -> Message:
     """
     Override the pixel at the specified position with the specified color.

@@ -10,14 +10,14 @@ from PIL import Image
 from fastapi import APIRouter, Depends, Request, Response
 from httpx import AsyncClient
 
-from pixels import constants
+from pixels.constants import Discord, Server, Sizes
 from pixels.models import Message, ModBan, PixelHistory, User
 from pixels.utils import auth
 
 log = logging.getLogger(__name__)
 router = APIRouter(
     tags=["Moderation Endpoints"],
-    include_in_schema=constants.prod_hide,
+    include_in_schema=Server.prod_hide,
     dependencies=[Depends(auth.JWTBearer(is_mod_endpoint=True))]
 )
 
@@ -84,8 +84,8 @@ async def ban_users(request: Request, user_list: list[User]) -> ModBan:
 @router.get("/pixel_history", response_model=t.Union[PixelHistory, Message])
 async def pixel_history(
         request: Request,
-        x: int = constants.x_query_validator,
-        y: int = constants.y_query_validator
+        x: int = Sizes.x_query_validator,
+        y: int = Sizes.y_query_validator
 ) -> t.Union[PixelHistory, Message]:
     """GET the user who edited the pixel with the given co-ordinates."""
     conn = request.state.db_conn
@@ -138,7 +138,7 @@ async def webhook(request: Request) -> Message:
         partial(
             Image.frombytes,
             "RGB",
-            (constants.width, constants.height),
+            (Sizes.width, Sizes.height),
             bytes(await request.state.canvas.get_pixels())
         )
     )
@@ -148,7 +148,7 @@ async def webhook(request: Request) -> Message:
         None,
         partial(
             image.resize,
-            constants.webhook_size,
+            Sizes.webhook_size,
             Image.NEAREST
         )
     )
@@ -168,7 +168,7 @@ async def webhook(request: Request) -> Message:
         if last_message_id is not None:
             data["attachments"] = []
             edit_resp = await client.patch(
-                f"{constants.webhook_url}/messages/{int(last_message_id)}",
+                f"{Discord.webhook_url}/messages/{int(last_message_id)}",
                 data={"payload_json": json.dumps(data)},
                 files=files
             )
@@ -184,7 +184,7 @@ async def webhook(request: Request) -> Message:
             # Username can be only set on sending
             data["username"] = "Pixels"
             create_resp = (await client.post(
-                constants.webhook_url,
+                Discord.webhook_url,
                 data={"payload_json": json.dumps(data)},
                 files=files
             )).json()

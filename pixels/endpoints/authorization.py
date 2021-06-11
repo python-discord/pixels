@@ -5,7 +5,7 @@ from fastapi import APIRouter, Cookie, HTTPException, Request, Response
 from httpx import AsyncClient
 from starlette.responses import RedirectResponse
 
-from pixels import constants
+from pixels.constants import Discord, Server
 from pixels.utils import auth
 
 log = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ async def authorize() -> Response:
 
     Unlike other endpoints, you should open this one in the browser, since it redirects to a discord website.
     """
-    return RedirectResponse(url=constants.auth_uri)
+    return RedirectResponse(url=Discord.auth_uri)
 
 
 @router.get("/show_token")
@@ -32,17 +32,17 @@ async def show_token(request: Request, token: str = Cookie(None)) -> Response:  
         context["token"] = token
         template_name = "api_token.html"
 
-    return constants.templates.TemplateResponse(template_name, context)
+    return Server.templates.TemplateResponse(template_name, context)
 
 
 def build_oauth_token_request(code: str) -> tuple[dict, dict]:
     """Given a code, return a dict of query params needed to complete the oath flow."""
     query = dict(
-        client_id=constants.client_id,
-        client_secret=constants.client_secret,
+        client_id=Discord.client_id,
+        client_secret=Discord.client_secret,
         grant_type="authorization_code",
         code=code,
-        redirect_uri=f"{constants.base_url}/callback",
+        redirect_uri=f"{Discord.base_url}/callback",
         scope="identify",
     )
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -60,9 +60,9 @@ async def auth_callback(request: Request) -> Response:
     try:
         async with AsyncClient() as client:
             token_params, token_headers = build_oauth_token_request(code)
-            token = (await client.post(constants.token_url, data=token_params, headers=token_headers)).json()
+            token = (await client.post(Discord.token_url, data=token_params, headers=token_headers)).json()
             auth_header = {"Authorization": f"Bearer {token['access_token']}"}
-            user = (await client.get(constants.user_url, headers=auth_header)).json()
+            user = (await client.get(Discord.user_url, headers=auth_header)).json()
             token = await auth.reset_user_token(request.state.db_conn, user["id"])
     except KeyError:
         # ensure that users don't land on the show_pixel page,
