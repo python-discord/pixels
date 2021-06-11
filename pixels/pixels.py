@@ -35,12 +35,6 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory="pixels/static"), name="static")
 
-# Global canvas reference
-canvas: t.Optional[Canvas] = None
-
-# Global Redis pool reference
-redis_pool: t.Optional[aioredis.Redis] = None
-
 
 def custom_openapi() -> dict[str, t.Any]:
     """Creates a custom OpenAPI schema."""
@@ -77,12 +71,6 @@ async def my_exception_handler(request: Request, exception: StarletteHTTPExcepti
 @app.on_event("startup")
 async def startup() -> None:
     """Create a asyncpg connection pool on startup and setup logging."""
-    # We have to make a global canvas and redis_pool object as there is no way for us to
-    # send an object to the following requests from this function.
-    # The global here isn't too bad, having many Canvas and redis pool objects in use isn't even an issue.
-    global canvas
-    global redis_pool
-
     # Setup logging
     format_string = "[%(asctime)s] [%(process)d] [%(levelname)s] %(name)s - %(message)s"
     date_format_string = "%Y-%m-%d %H:%M:%S %z"
@@ -95,11 +83,11 @@ async def startup() -> None:
     # Init DB and Redis Connections
     await constants.DB_POOL
 
-    redis_pool = await aioredis.create_redis_pool(constants.redis_url)
-    constants.REDIS_FUTURE.set_result(redis_pool)
+    app.state.redis_pool = await aioredis.create_redis_pool(constants.redis_url)
+    constants.REDIS_FUTURE.set_result(app.state.redis_pool)
 
-    canvas = Canvas(redis_pool)  # Global
-    await canvas.sync_cache(await constants.DB_POOL.acquire())
+    app.state.canvas = Canvas(app.state.redis_pool)  # Global
+    await app.state.canvas.sync_cache(await constants.DB_POOL.acquire())
 
 
 @app.on_event("shutdown")
@@ -114,8 +102,8 @@ async def setup_data(request: Request, callnext: t.Callable) -> Response:
     """Get a connection from the pool and a canvas reference for this request."""
     async with constants.DB_POOL.acquire() as connection:
         request.state.db_conn = connection
-        request.state.canvas = canvas
-        request.state.redis_pool = redis_pool
+        request.state.canvas = app.state.canvas
+        request.state.redis_pool = app.state.redis_pool
         response = await callnext(request)
     request.state.db_conn = None
     request.state.canvas = None
