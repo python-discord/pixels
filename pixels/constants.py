@@ -10,17 +10,14 @@ from fastapi.templating import Jinja2Templates
 class Connections:
     """How to connect to other, internal services."""
 
-    database_url = config("DATABASE_URL")
-    redis_url = config("REDIS_URL")
-
-    min_pool_size = config("MIN_POOL_SIZE", cast=int, default=2)
-    max_pool_size = config("MAX_POOL_SIZE", cast=int, default=5)
+    DATABASE_RUL = config("DATABASE_URL")
+    REDIS_URL = config("REDIS_URL")
 
     # Awaited in application startup
     DB_POOL = asyncpg.create_pool(
-        database_url,
-        min_size=min_pool_size,
-        max_size=max_pool_size
+        DATABASE_RUL,
+        min_size=config("MIN_POOL_SIZE", cast=int, default=2),
+        max_size=config("MAX_POOL_SIZE", cast=int, default=5)
     )
     # Result set during application startup
     REDIS_FUTURE = asyncio.Future()
@@ -29,46 +26,45 @@ class Connections:
 class Discord:
     """Any config required for interaction with Discord."""
 
-    client_id = config("CLIENT_ID")
-    client_secret = config("CLIENT_SECRET")
+    CLIENT_ID = config("CLIENT_ID")
+    CLIENT_SECRET = config("CLIENT_SECRET")
     # starlette already quotes urls, so the url copied from discord ends up double encoded
-    auth_uri = config("AUTH_URI", cast=unquote)
-    token_url = config("TOKEN_URL", default="https://discord.com/api/oauth2/token")
-    user_url = config("USER_URL", default="https://discord.com/api/users/@me")
-
-    api_base = "https://discord.com/api/v8"
-    webhook_url = config("WEBHOOK_URL")
+    AUTH_URL = config("AUTH_URL", cast=unquote)
+    TOKEN_URL = config("TOKEN_URL", default="https://discord.com/api/oauth2/token")
+    USER_URL = config("USER_URL", default="https://discord.com/api/users/@me")
+    WEBHOOK_URL = config("WEBHOOK_URL")
+    API_BASE = "https://discord.com/api/v8"
 
 
 class Server:
     """General config for the pixels server."""
 
-    base_url = config("BASE_URL", default="https://pixel.pythondiscord.com")
-    jwt_secret = config("JWT_SECRET")
-    git_sha = config("GIT_SHA")
+    BASE_URL = config("BASE_URL", default="https://pixel.pythondiscord.com")
+    JWT_SECRET = config("JWT_SECRET")
+    GIT_SHA = config("GIT_SHA")
 
-    log_level = config("LOG_LEVEL", default="INFO")
-    prod_hide = "true" != config("PRODUCTION", default="false")
+    LOG_LEVEL = config("LOG_LEVEL", default="INFO")
+    PROD_HIDE = "true" != config("PRODUCTION", default="false")
 
     with open("pixels/resources/mods.txt") as f:
-        mods = f.read().split()
+        MODS = f.read().split()
 
-    templates = Jinja2Templates(directory="pixels/templates")
+    TEMPLATES = Jinja2Templates(directory="pixels/templates")
 
 
 class Sizes:
     """The size of the canvas and webhook upscale."""
 
     # For ease of scaling
-    mutliplyer = 17
-    width = 16 * mutliplyer
-    height = 9 * mutliplyer
+    MULTIPLYER = 17
+    WIDTH = 16 * MULTIPLYER
+    HEIGHT = 9 * MULTIPLYER
 
     # We want to push a larger image to Discord for visibility
-    webhook_size = (1600, 900)
+    WEBHOOK_SIZE = (1600, 900)
 
-    x_query_validator = Query(None, ge=0, lt=width)
-    y_query_validator = Query(None, ge=0, lt=height)
+    X_QUERY_VALIDATOR = Query(None, ge=0, lt=WIDTH)
+    Y_QUERY_VALIDATOR = Query(None, ge=0, lt=HEIGHT)
 
 
 class Ratelimits:

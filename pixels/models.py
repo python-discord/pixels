@@ -19,18 +19,18 @@ class Pixel(BaseModel):
     @validator("x")
     def x_must_be_lt_width(cls, x: int) -> int:
         """Ensure that x is within the bounds of the image."""
-        if 0 <= x < Sizes.width:
+        if 0 <= x < Sizes.WIDTH:
             return x
         else:
-            raise ValueError(f"x must be inside range(0, {Sizes.width})")
+            raise ValueError(f"x must be inside range(0, {Sizes.WIDTH})")
 
     @validator("y")
     def y_must_be_lt_height(cls, y: int) -> int:
         """Ensure that y is within the bounds of the image."""
-        if 0 <= y < Sizes.height:
+        if 0 <= y < Sizes.HEIGHT:
             return y
         else:
-            raise ValueError(f"y must be inside range(0, {Sizes.height})")
+            raise ValueError(f"y must be inside range(0, {Sizes.HEIGHT})")
 
     @validator("rgb")
     def rgb_must_be_valid_hex(cls, rgb: str) -> str:
@@ -49,8 +49,8 @@ class Pixel(BaseModel):
 
         schema_extra = {
             "example": {
-                "x": Sizes.width // 2,
-                "y": Sizes.height // 2,
+                "x": Sizes.WIDTH // 2,
+                "y": Sizes.HEIGHT // 2,
                 "rgb": "00FF00"
             }
         }

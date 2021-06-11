@@ -57,7 +57,7 @@ app.openapi = custom_openapi
 async def my_exception_handler(request: Request, exception: StarletteHTTPException) -> Response:
     """Custom exception handler to render template for 404 error."""
     if exception.status_code == 404:
-        return Server.templates.TemplateResponse(
+        return Server.TEMPLATES.TemplateResponse(
             name="not_found.html",
             context={"request": request},
             status_code=exception.status_code
@@ -77,13 +77,13 @@ async def startup() -> None:
     logging.basicConfig(
         format=format_string,
         datefmt=date_format_string,
-        level=getattr(logging, Server.log_level.upper())
+        level=getattr(logging, Server.LOG_LEVEL.upper())
     )
 
     # Init DB and Redis Connections
     await Connections.DB_POOL
 
-    app.state.redis_pool = await aioredis.create_redis_pool(Connections.redis_url)
+    app.state.redis_pool = await aioredis.create_redis_pool(Connections.REDIS_URL)
     Connections.REDIS_FUTURE.set_result(app.state.redis_pool)
 
     app.state.canvas = Canvas(app.state.redis_pool)
@@ -124,4 +124,4 @@ async def info(request: Request) -> Response:
 async def docs(request: Request) -> Response:
     """Return the API docs."""
     template_name = "docs.html"
-    return Server.templates.TemplateResponse(template_name, {"request": request})
+    return Server.TEMPLATES.TemplateResponse(template_name, {"request": request})

@@ -17,7 +17,7 @@ from pixels.utils import auth
 log = logging.getLogger(__name__)
 router = APIRouter(
     tags=["Moderation Endpoints"],
-    include_in_schema=Server.prod_hide,
+    include_in_schema=Server.PROD_HIDE,
     dependencies=[Depends(auth.JWTBearer(is_mod_endpoint=True))]
 )
 
@@ -138,7 +138,7 @@ async def webhook(request: Request) -> Message:
         partial(
             Image.frombytes,
             "RGB",
-            (Sizes.width, Sizes.height),
+            (Sizes.WIDTH, Sizes.HEIGHT),
             bytes(await request.state.canvas.get_pixels())
         )
     )
@@ -148,7 +148,7 @@ async def webhook(request: Request) -> Message:
         None,
         partial(
             image.resize,
-            Sizes.webhook_size,
+            Sizes.WEBHOOK_SIZE,
             Image.NEAREST
         )
     )
@@ -168,7 +168,7 @@ async def webhook(request: Request) -> Message:
         if last_message_id is not None:
             data["attachments"] = []
             edit_resp = await client.patch(
-                f"{Discord.webhook_url}/messages/{int(last_message_id)}",
+                f"{Discord.WEBHOOK_URL}/messages/{int(last_message_id)}",
                 data={"payload_json": json.dumps(data)},
                 files=files
             )
@@ -184,7 +184,7 @@ async def webhook(request: Request) -> Message:
             # Username can be only set on sending
             data["username"] = "Pixels"
             create_resp = (await client.post(
-                Discord.webhook_url,
+                Discord.WEBHOOK_URL,
                 data={"payload_json": json.dumps(data)},
                 files=files
             )).json()

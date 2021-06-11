@@ -35,7 +35,7 @@ REDIS_URL=redis://<address>:<port>/<db id>?password=<password>
 # Discord OAuth variables. See below for how to generate them.
 CLIENT_ID=<discord app client ID>
 CLIENT_SECRET=<discord app client secret>
-AUTH_URI=<discord OAuth2 URL>
+AUTH_URL=<discord OAuth2 URL>
 # Where the root endpoint can be found.
 BASE_URL=http://localhost:8000
 # 32 byte (64 digit hex string) secret for encoding tokens. Any value can be used.

@@ -34,7 +34,7 @@ async def size(request: Request) -> GetSize:
     print(f"We got our canvas size! Height: {canvas_height}, Width: {canvas_width}.")
     ```
     """
-    return GetSize(width=Sizes.width, height=Sizes.height)
+    return GetSize(width=Sizes.WIDTH, height=Sizes.HEIGHT)
 
 
 @router.get("/pixels", response_class=Response, responses={
@@ -115,7 +115,7 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     print("Here's the colour of the pixel:", r.json()["rgb"])
     ```
     """
-    if x >= Sizes.width or y >= Sizes.height:
+    if x >= Sizes.WIDTH or y >= Sizes.HEIGHT:
         raise HTTPException(400, "Pixel is out of the canvas bounds.")
     pixel_data = await request.state.canvas.get_pixel(x, y)
 
