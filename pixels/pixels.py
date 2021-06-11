@@ -70,7 +70,7 @@ async def my_exception_handler(request: Request, exception: StarletteHTTPExcepti
 
 @app.on_event("startup")
 async def startup() -> None:
-    """Create a asyncpg connection pool on startup and setup logging."""
+    """Setup logging and create asyncpg and redis connection pools on startup."""
     # Setup logging
     format_string = "[%(asctime)s] [%(process)d] [%(levelname)s] %(name)s - %(message)s"
     date_format_string = "%Y-%m-%d %H:%M:%S %z"
@@ -86,7 +86,7 @@ async def startup() -> None:
     app.state.redis_pool = await aioredis.create_redis_pool(constants.redis_url)
     constants.REDIS_FUTURE.set_result(app.state.redis_pool)
 
-    app.state.canvas = Canvas(app.state.redis_pool)  # Global
+    app.state.canvas = Canvas(app.state.redis_pool)
     await app.state.canvas.sync_cache(await constants.DB_POOL.acquire())
 
 
