@@ -72,7 +72,7 @@ async def ban_users(request: Request, user_list: list[User]) -> ModBan:
     sql = "UPDATE pixel_history SET deleted=TRUE where user_id=any($1::bigint[])"
     await conn.execute(sql, db_users)
 
-    await request.state.canvas.sync_cache(conn)
+    await request.state.canvas.sync_cache(conn, skip_check=True)
 
     resp = {"banned": db_users, "not_found": []}
     if non_db_users:
@@ -198,5 +198,13 @@ async def webhook(request: Request) -> Message:
 async def reset_token(request: Request) -> Response:
     """Reset an API token."""
     await auth.reset_user_token(request.state.db_conn, request.state.user_id)
+
+    return Response(status_code=204)
+
+
+@router.post("/refresh_cache")
+async def refresh_cache(request: Request) -> Response:
+    """Force a refresh of the cache via the API."""
+    await request.state.canvas.sync_cache(request.state.db_conn, skip_check=True)
 
     return Response(status_code=204)
