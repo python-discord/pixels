@@ -646,3 +646,13 @@ async def reset_token(request: Request) -> Response:
     await reset_user_token(request.state.db_conn, request.state.auth.user_id)
 
     return Response(status_code=204)
+
+
+@app.post("/refresh_cache", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide)
+async def refresh_cache(request: Request) -> ModBan:
+    """Force a refresh of the cache via the API."""
+    request.state.auth.raise_unless_mod()
+
+    await canvas.sync_cache(request.state.db_conn, skip_check=True)
+
+    return Response(status_code=204)
