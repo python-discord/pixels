@@ -42,12 +42,18 @@ class Canvas:
 
         cache = bytearray(constants.width * constants.height * 3)
 
-        records = await conn.fetch("SELECT x, y, rgb FROM current_pixel")
+        sql = (
+            "SELECT x, y, rgb "
+            "FROM current_pixel "
+            "WHERE x < $1 "
+            "AND y < $2"
+        )
+        records = await conn.fetch(sql, constants.width, constants.height)
         for record in records:
             position = record["y"] * constants.width + record["x"]
             cache[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
 
-        await self.redis.set("canvas-cache", cache)
+        await self.redis.set(f"{constants.git_sha}-canvas-cache", cache)
 
         log.info(f"Cache updated finished! (took {time() - start_time}s)")
         await conn.execute("UPDATE cache_state SET last_synced = now()")
@@ -62,16 +68,22 @@ class Canvas:
         record, = await conn.fetch("SELECT last_modified, last_synced FROM cache_state")
         return record["last_modified"] > record["last_synced"]
 
-    async def sync_cache(self, conn: Connection) -> None:
-        """Make sure that the cache is up-to-date."""
+    async def sync_cache(self, conn: Connection, *, skip_check: bool = False) -> None:
+        """
+        Make sure that the cache is up-to-date.
+
+        `skip_check` is used when you want to force a canvas refresh, ignoring the
+        stored cache state in the db.
+        """
         lock_cleared = False
 
-        while await self.is_cache_out_of_date(conn):
+        while skip_check or await self.is_cache_out_of_date(conn):
             log.info("Cache will be updated")
 
             if await self._try_acquire_lock(conn) or lock_cleared:
                 log.info("Lock acquired. Starting synchronisation.")
                 lock_cleared = False
+                skip_check = False  # Don't infinite loop after refreshing cache.
                 try:
                     await self._populate_cache(conn)
                 # Use a finally block to make sure that the lock is freed
@@ -122,15 +134,15 @@ class Canvas:
 
             # Update the cache
             position = (y * constants.width + x) * 3
-            await self.redis.setrange("canvas-cache", position, bytes.fromhex(rgb))
+            await self.redis.setrange(f"{constants.git_sha}-canvas-cache", position, bytes.fromhex(rgb))
 
             await conn.execute("UPDATE cache_state SET last_synced = now()")
 
     async def get_pixels(self) -> bytearray:
         """Returns the whole board."""
-        return await self.redis.get("canvas-cache")
+        return await self.redis.get(f"{constants.git_sha}-canvas-cache")
 
     async def get_pixel(self, x: int, y: int) -> bytearray:
         """Returns a single pixel from the board."""
         position = (y * constants.width + x) * 3
-        return await self.redis.getrange("canvas-cache", position, position+2)
+        return await self.redis.getrange(f"{constants.git_sha}-canvas-cache", position, position+2)

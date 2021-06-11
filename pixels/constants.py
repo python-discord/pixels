@@ -22,17 +22,15 @@ user_url = config("USER_URL", default="https://discord.com/api/users/@me")
 api_base = "https://discord.com/api/v8"
 webhook_url = config("WEBHOOK_URL")
 
-# 16:9 is the aspect ratio of a guild banner
-base_width = 16
-base_height = 9
+git_sha = config("GIT_SHA")
 
 # For ease of scaling
-mutliplyer = 15
-width = base_width * mutliplyer
-height = base_height * mutliplyer
+mutliplyer = 17
+width = 16 * mutliplyer
+height = 9 * mutliplyer
 
 # We want to push a larger image to Discord for visibility
-webhook_size = (base_width * 100, base_height * 100)
+webhook_size = (1600, 900)
 
 x_query_validator = Query(None, ge=0, lt=width)
 y_query_validator = Query(None, ge=0, lt=height)
@@ -44,7 +42,7 @@ log_level = config("LOG_LEVEL", default="INFO")
 prod_hide = "true" != config("PRODUCTION", default="false")
 
 # How many seconds you have to wait before setting another pixel
-PIXEL_RATE_LIMIT = 180
+PIXEL_RATE_LIMIT = 120
 
 # Awaited in application startup
 DB_POOL = asyncpg.create_pool(
