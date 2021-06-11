@@ -649,7 +649,7 @@ async def reset_token(request: Request) -> Response:
 
 
 @app.post("/refresh_cache", tags=["Moderation Endpoints"], include_in_schema=constants.prod_hide)
-async def refresh_cache(request: Request) -> ModBan:
+async def refresh_cache(request: Request) -> Response:
     """Force a refresh of the cache via the API."""
     request.state.auth.raise_unless_mod()
 
