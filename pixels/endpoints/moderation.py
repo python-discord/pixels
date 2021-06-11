@@ -17,7 +17,7 @@ from pixels.utils import auth
 log = logging.getLogger(__name__)
 router = APIRouter(
     tags=["Moderation Endpoints"],
-    include_in_schema=Server.PROD_HIDE,
+    include_in_schema=Server.SHOW_DEV_ENDPOINTS,
     dependencies=[Depends(auth.JWTBearer(is_mod_endpoint=True))]
 )
 

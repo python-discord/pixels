@@ -44,7 +44,7 @@ class Server:
     GIT_SHA = config("GIT_SHA")
 
     LOG_LEVEL = config("LOG_LEVEL", default="INFO")
-    PROD_HIDE = "true" != config("PRODUCTION", default="false")
+    SHOW_DEV_ENDPOINTS = "true" != config("PRODUCTION", default="false")
 
     with open("pixels/resources/mods.txt") as f:
         MODS = f.read().split()
