@@ -10,12 +10,12 @@ from fastapi.templating import Jinja2Templates
 class Connections:
     """How to connect to other, internal services."""
 
-    DATABASE_RUL = config("DATABASE_URL")
+    DATABASE_URL = config("DATABASE_URL")
     REDIS_URL = config("REDIS_URL")
 
     # Awaited in application startup
     DB_POOL = asyncpg.create_pool(
-        DATABASE_RUL,
+        DATABASE_URL,
         min_size=config("MIN_POOL_SIZE", cast=int, default=2),
         max_size=config("MAX_POOL_SIZE", cast=int, default=5)
     )
