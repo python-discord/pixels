@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, requests
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
-from pixels import constants
+from pixels.constants import Connections
 from pixels.utils import auth
 
 log = logging.getLogger(__name__)
@@ -264,7 +264,7 @@ class UserRedis(__BucketBase):
     async def _pre_call(self, _request_id: int, request: fastapi.Request, *args, **kwargs) -> None:
         if not self.redis:
             try:
-                self.redis = await constants.REDIS_FUTURE
+                self.redis = await Connections.REDIS_FUTURE
             except asyncio.InvalidStateError:
                 raise ValueError("Redis connection isn't ready yet.")
 

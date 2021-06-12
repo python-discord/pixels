@@ -6,7 +6,7 @@ from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
-from pixels import constants
+from pixels.constants import Server
 from pixels.models import AuthState
 
 log = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class JWTBearer(HTTPBearer):
         credentials = credentials.credentials
         if credentials:
             try:
-                token_data = jwt.decode(credentials, constants.jwt_secret)
+                token_data = jwt.decode(credentials, Server.JWT_SECRET)
             except JWTError:
                 raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
             else:
@@ -59,7 +59,7 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
         raise PermissionError
     # 22 long string
     token_salt = secrets.token_urlsafe(16)
-    is_mod = user_id in constants.mods
+    is_mod = user_id in Server.MODS
     async with conn.transaction():
         await conn.execute(
             """INSERT INTO users (user_id, key_salt, is_mod) VALUES ($1, $2, $3)
@@ -69,4 +69,4 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
             is_mod,
         )
     jwt_data = dict(id=user_id, salt=token_salt)
-    return jwt.encode(jwt_data, constants.jwt_secret, algorithm="HS256")
+    return jwt.encode(jwt_data, Server.JWT_SECRET, algorithm="HS256")

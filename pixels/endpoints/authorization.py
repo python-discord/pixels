@@ -42,7 +42,7 @@ def build_oauth_token_request(code: str) -> tuple[dict, dict]:
         client_secret=Discord.CLIENT_SECRET,
         grant_type="authorization_code",
         code=code,
-        redirect_uri=f"{Discord.base_url}/callback",
+        redirect_uri=f"{Server.BASE_URL}/callback",
         scope="identify",
     )
     headers = {"Content-Type": "application/x-www-form-urlencoded"}

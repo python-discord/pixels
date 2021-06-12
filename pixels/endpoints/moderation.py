@@ -84,8 +84,8 @@ async def ban_users(request: Request, user_list: list[User]) -> ModBan:
 @router.get("/pixel_history", response_model=t.Union[PixelHistory, Message])
 async def pixel_history(
         request: Request,
-        x: int = Sizes.x_query_validator,
-        y: int = Sizes.y_query_validator
+        x: int = Sizes.X_QUERY_VALIDATOR,
+        y: int = Sizes.Y_QUERY_VALIDATOR
 ) -> t.Union[PixelHistory, Message]:
     """GET the user who edited the pixel with the given co-ordinates."""
     conn = request.state.db_conn
