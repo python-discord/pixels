@@ -50,7 +50,11 @@ async def size(request: Request) -> GetSize:
         }
     }
 })
-@ratelimits.UserRedis(requests=5, time_unit=10, cooldown=60)
+@ratelimits.UserRedis(
+    requests=Ratelimits.GET_PIXELS_AMOUNT,
+    time_unit=Ratelimits.GET_PIXELS_RATE_LIMIT,
+    cooldown=Ratelimits.GET_PIXELS_RATE_COOLDOWN
+)
 async def pixels(request: Request) -> Response:
     """
     Get the current state of all pixels from the database.
@@ -82,7 +86,11 @@ async def pixels(request: Request) -> Response:
 
 
 @router.get("/pixel", response_model=Pixel)
-@ratelimits.UserRedis(requests=8, time_unit=10, cooldown=120)
+@ratelimits.UserRedis(
+    requests=Ratelimits.GET_PIXEL_AMOUNT,
+    time_unit=Ratelimits.GET_PIXEL_RATE_LIMIT,
+    cooldown=Ratelimits.GET_PIXEL_RATE_COOLDOWN
+)
 async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     """
     Get a single pixel given the x and y coordinates.
