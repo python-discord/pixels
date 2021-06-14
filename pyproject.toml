@@ -6,7 +6,7 @@ name = "pypi"
 [tool.poetry]
 name = "pixels"
 version = "1.0.0"
-description = "A collaborative canvas, where users paint pixel by pixel, by POSTing co-ordinates and a colour code to an API."
+description = "A collaborative canvas, where users paint pixel by pixel, by POSTing coordinates and a colour code to an API."
 authors = ["Python Discord <info@pythondiscord.com>"]
 license = "MIT"
 

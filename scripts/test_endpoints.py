@@ -46,8 +46,7 @@ def set_to_mod(user_id: int) -> dict:
 def show_image() -> None:
     """Gets the current image it displays it on screen."""
     size = requests.get(f"{base_url}/size", headers=HEADERS).json()
-    h = size["height"]
-    w = size["width"]
+    h, w = size["height"], size["width"]
     a = requests.get(f"{base_url}/pixels", headers=HEADERS)
     print(f"Response:{a.text}\nHeaders:{a.headers}")
     a.raise_for_status()

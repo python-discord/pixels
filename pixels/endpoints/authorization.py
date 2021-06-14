@@ -15,9 +15,9 @@ router = APIRouter(include_in_schema=False)
 @router.get("/authorize")
 async def authorize() -> Response:
     """
-    Redirect the user to discord authorization, the flow continues in /callback.
+    Redirect the user to Discord authorization, the flow continues in /callback.
 
-    Unlike other endpoints, you should open this one in the browser, since it redirects to a discord website.
+    Unlike other endpoints, you should open this one in the browser, since it redirects to the Discord OAuth2 flow.
     """
     return RedirectResponse(url=Discord.AUTH_URL)
 
@@ -36,15 +36,15 @@ async def show_token(request: Request, token: str = Cookie(None)) -> Response:  
 
 
 def build_oauth_token_request(code: str) -> tuple[dict, dict]:
-    """Given a code, return a dict of query params needed to complete the oath flow."""
-    query = dict(
-        client_id=Discord.CLIENT_ID,
-        client_secret=Discord.CLIENT_SECRET,
-        grant_type="authorization_code",
-        code=code,
-        redirect_uri=f"{Server.BASE_URL}/callback",
-        scope="identify",
-    )
+    """Given a code, return a dict of query params needed to complete the OAuth2 flow."""
+    query = {
+        "client_id": Discord.CLIENT_ID,
+        "client_secret": Discord.CLIENT_SECRET,
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": f"{Server.BASE_URL}/callback",
+        "scope": "identify",
+    }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     return query, headers
 
@@ -54,7 +54,7 @@ async def auth_callback(request: Request) -> Response:
     """
     Create the user given the authorization code and output the token.
 
-    This endpoint is only used as a redirect target from discord.
+    This endpoint is only used as a redirect target from Discord.
     """
     code = request.query_params["code"]
     try:
@@ -65,7 +65,7 @@ async def auth_callback(request: Request) -> Response:
             user = (await client.get(Discord.USER_URL, headers=auth_header)).json()
             token = await auth.reset_user_token(request.state.db_conn, user["id"])
     except KeyError:
-        # ensure that users don't land on the show_pixel page,
+        # Ensure that users don't land on the show_pixel page
         log.error(traceback.format_exc())
         raise HTTPException(401, "Unknown error while creating token")
     except PermissionError:

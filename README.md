@@ -33,9 +33,9 @@ DATABASE_URL=postgres://<username>:<password>@<address>:<port>/<database name>
 # Redis storage URL. Not required when using compose.
 REDIS_URL=redis://<address>:<port>/<db id>?password=<password>
 # Discord OAuth variables. See below for how to generate them.
-CLIENT_ID=<discord app client ID>
-CLIENT_SECRET=<discord app client secret>
-AUTH_URL=<discord OAuth2 URL>
+CLIENT_ID=<Discord app client ID>
+CLIENT_SECRET=<Discord app client secret>
+AUTH_URL=<Discord OAuth2 URL>
 # Where the root endpoint can be found.
 BASE_URL=http://localhost:8000
 # 32 byte (64 digit hex string) secret for encoding tokens. Any value can be used.

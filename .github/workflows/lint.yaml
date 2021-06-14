@@ -57,7 +57,7 @@ jobs:
           ${{ hashFiles('./pyproject.toml', './poetry.lock') }}"
 
       # Install our dependencies if we did not restore a dependency cache
-      - name: Install dependencies using poetry
+      - name: Install dependencies using Poetry
         if: steps.python_cache.outputs.cache-hit != 'true'
         run: |
           pip install poetry

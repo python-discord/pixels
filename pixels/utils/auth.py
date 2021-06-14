@@ -53,7 +53,7 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
 
     If the user already exists, their token is regenerated and the old is invalidated.
     """
-    # returns None if the user doesn't exist and false if they aren't banned
+    # Returns None if the user doesn't exist and false if they aren't banned
     is_banned = await conn.fetchval("SELECT is_banned FROM users WHERE user_id = $1", int(user_id))
     if is_banned:
         raise PermissionError

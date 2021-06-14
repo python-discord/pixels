@@ -87,7 +87,7 @@ async def pixel_history(
         x: int = Sizes.X_QUERY_VALIDATOR,
         y: int = Sizes.Y_QUERY_VALIDATOR
 ) -> t.Union[PixelHistory, Message]:
-    """GET the user who edited the pixel with the given co-ordinates."""
+    """Get the user who placed a specific pixel given its coordinates."""
     conn = request.state.db_conn
 
     sql = """
@@ -153,7 +153,7 @@ async def webhook(request: Request) -> Message:
         )
     )
 
-    # BytesIO gives file-like interface for saving
+    # BytesIO gives a file-like interface for saving
     # and later this is able to get actual content what will be sent.
     file = io.BytesIO()
     await loop.run_in_executor(None, partial(image.save, file, format="PNG"))
@@ -177,7 +177,7 @@ async def webhook(request: Request) -> Message:
                 log.warning(f"Non 200 status code from Discord: {edit_resp.status_code}\n{edit_resp.text}")
                 last_message_id = None
 
-        # If no message is found in cache or message is missing, create new message
+        # If no message is found in cache, message is missing or edit failed, create new message
         if last_message_id is None:
             # If we are sending new message, don't specify attachments
             data.pop("attachments", None)
