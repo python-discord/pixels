@@ -23,28 +23,30 @@ class JWTBearer(HTTPBearer):
         """Check if the supplied credentials are valid for this endpoint."""
         credentials: HTTPAuthorizationCredentials = await super().__call__(request)
         credentials = credentials.credentials
-        if credentials:
-            try:
-                token_data = jwt.decode(credentials, Server.JWT_SECRET)
-            except JWTError:
-                raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
-            else:
-                user_id = token_data["id"]
-                token_salt = token_data["salt"]
-                user_state = await request.state.db_conn.fetchrow(
-                    "SELECT is_banned, is_mod, key_salt FROM users WHERE user_id = $1;", int(user_id),
-                )
-                if user_state is None or user_state["key_salt"] != token_salt:
-                    raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
-                elif user_state["is_banned"]:
-                    raise HTTPException(status_code=403, detail=AuthState.BANNED.value)
-                elif self.is_mod_endpoint and not user_state["is_mod"]:
-                    raise HTTPException(status_code=403, detail=AuthState.NEEDS_MODERATOR.value)
-                else:
-                    request.state.user_id = int(user_id)
-                    return credentials
-        else:
+        if not credentials:
             raise HTTPException(status_code=403, detail=AuthState.NO_TOKEN)
+
+        try:
+            token_data = jwt.decode(credentials, Server.JWT_SECRET)
+        except JWTError:
+            raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
+
+        user_id = token_data["id"]
+        token_salt = token_data["salt"]
+        user_state = await request.state.db_conn.fetchrow(
+            "SELECT is_banned, is_mod, key_salt FROM users WHERE user_id = $1;", int(user_id),
+        )
+
+        # Handle bad scenarios
+        if user_state is None or user_state["key_salt"] != token_salt:
+            raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
+        elif user_state["is_banned"]:
+            raise HTTPException(status_code=403, detail=AuthState.BANNED.value)
+        elif self.is_mod_endpoint and not user_state["is_mod"]:
+            raise HTTPException(status_code=403, detail=AuthState.NEEDS_MODERATOR.value)
+
+        request.state.user_id = int(user_id)
+        return credentials
 
 
 async def reset_user_token(conn: Connection, user_id: str) -> str:
