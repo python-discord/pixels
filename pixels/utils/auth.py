@@ -34,7 +34,8 @@ class JWTBearer(HTTPBearer):
         user_id = token_data["id"]
         token_salt = token_data["salt"]
         user_state = await request.state.db_conn.fetchrow(
-            "SELECT is_banned, is_mod, key_salt FROM users WHERE user_id = $1;", int(user_id),
+            "SELECT is_banned, is_mod, key_salt FROM users WHERE user_id = $1",
+            int(user_id)
         )
 
         # Handle bad scenarios

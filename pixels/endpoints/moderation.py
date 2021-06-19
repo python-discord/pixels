@@ -34,9 +34,7 @@ async def set_mod(request: Request, user: User) -> Message:
     user_id = user.user_id
     conn = request.state.db_conn
     async with conn.transaction():
-        user_state = await conn.fetchrow(
-            "SELECT is_mod FROM users WHERE user_id = $1;", user_id,
-        )
+        user_state = await conn.fetchrow("SELECT is_mod FROM users WHERE user_id = $1", user_id)
         if user_state is None:
             return Message(message=f"User with user_id {user_id} does not exist.")
         elif user_state['is_mod']:
@@ -59,9 +57,9 @@ async def ban_users(request: Request, user_list: list[User]) -> ModBan:
 
     # Ref:
     # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
-    await conn.execute("UPDATE users SET is_banned=TRUE WHERE user_id=any($1::bigint[]);", db_users)
+    await conn.execute("UPDATE users SET is_banned=TRUE WHERE user_id=any($1::bigint[])", db_users)
 
-    await conn.execute("UPDATE pixel_history SET deleted=TRUE WHERE user_id=any($1::bigint[]);", db_users)
+    await conn.execute("UPDATE pixel_history SET deleted=TRUE WHERE user_id=any($1::bigint[])", db_users)
 
     await request.state.canvas.sync_cache(conn, skip_check=True)
 
@@ -75,18 +73,13 @@ async def pixel_history(
         y: int = Sizes.Y_QUERY_VALIDATOR
 ) -> t.Union[PixelHistory, Message]:
     """Get the user who placed a specific pixel given its coordinates."""
-    conn = request.state.db_conn
-
-    sql = """
-    select user_id::text
-    from pixel_history
-    where x=$1
-    and y=$2
-    and not deleted
-    order by pixel_history_id desc
-    limit 1
-    """
-    record = await conn.fetchrow(sql, x, y)
+    sql = (
+        "SELECT user_id::text FROM pixel_history "
+        "WHERE x=$1 AND y=$2 AND NOT deleted "
+        "ORDER BY pixel_history_id DESC "
+        "LIMIT 1"
+    )
+    record = await request.state.db_conn.fetchrow(sql, x, y)
 
     if not record:
         return Message(message=f"No user history for pixel ({x}, {y}).")

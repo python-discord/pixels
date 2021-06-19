@@ -29,11 +29,14 @@ class Canvas:
         """
         # We try to set the lock but use a self join to return the previous state.
         previous_record, = await conn.fetch(
-            """UPDATE cache_state x
-            SET sync_lock = now()
-            FROM (SELECT sync_lock FROM cache_state FOR UPDATE) y
-            RETURNING y.sync_lock AS previous_state
-            """)
+            "UPDATE cache_state x "
+            "SET sync_lock = now() "
+            "FROM ( "
+            "   SELECT sync_lock FROM cache_state "
+            "   FOR UPDATE "
+            ") y "
+            "RETURNING y.sync_lock AS previous_state"
+        )
         return previous_record["previous_state"] is None
 
     async def _populate_cache(self, conn: Connection) -> None:
@@ -42,12 +45,8 @@ class Canvas:
 
         cache = bytearray(Sizes.WIDTH * Sizes.HEIGHT * 3)
 
-        sql = (
-            "SELECT x, y, rgb "
-            "FROM current_pixel "
-            "WHERE x < $1 "
-            "AND y < $2"
-        )
+        sql = "SELECT x, y, rgb FROM current_pixel WHERE x < $1 AND y < $2"
+
         records = await conn.fetch(sql, Sizes.WIDTH, Sizes.HEIGHT)
         for record in records:
             position = record["y"] * Sizes.WIDTH + record["x"]
@@ -102,9 +101,8 @@ class Canvas:
                     # If it has been too long since the lock has been set
                     # we consider it as deadlocked and clear it
                     result = await conn.execute(
-                        f"""UPDATE cache_state
-                        SET sync_lock = now()
-                        WHERE now() - sync_lock > interval '{KEY_TIMEOUT} seconds'"""
+                        "UPDATE cache_state SET sync_lock = now() "
+                        f"WHERE now() - sync_lock > interval '{KEY_TIMEOUT} seconds'"
                     )
                     if result.split()[1] == "1":
                         log.warning("Lock considered as deadlocked. Clearing it.")
@@ -123,9 +121,8 @@ class Canvas:
         async with conn.transaction():
             # Insert the pixel into the database
             await conn.execute(
-                """
-                INSERT INTO pixel_history (x, y, rgb, user_id, deleted) VALUES ($1, $2, $3, $4, false);
-            """,
+                "INSERT INTO pixel_history (x, y, rgb, user_id, deleted) "
+                "VALUES ($1, $2, $3, $4, false)",
                 x,
                 y,
                 rgb,
