@@ -52,28 +52,20 @@ async def ban_users(request: Request, user_list: list[User]) -> ModBan:
     conn = request.state.db_conn
     users = [user.user_id for user in user_list]
 
-    sql = "SELECT * FROM users WHERE user_id=any($1::bigint[])"
-    records = await conn.fetch(sql, tuple(users))
+    records = await conn.fetch("SELECT * FROM users WHERE user_id=any($1::bigint[])", tuple(users))
     db_users = [record["user_id"] for record in records]
 
     non_db_users = set(users) - set(db_users)
 
     # Ref:
     # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
-    sql = "UPDATE users SET is_banned=TRUE where user_id=any($1::bigint[])"
+    await conn.execute("UPDATE users SET is_banned=TRUE WHERE user_id=any($1::bigint[]);", db_users)
 
-    await conn.execute(sql, db_users)
-
-    sql = "UPDATE pixel_history SET deleted=TRUE where user_id=any($1::bigint[])"
-    await conn.execute(sql, db_users)
+    await conn.execute("UPDATE pixel_history SET deleted=TRUE WHERE user_id=any($1::bigint[]);", db_users)
 
     await request.state.canvas.sync_cache(conn, skip_check=True)
 
-    resp = {"banned": db_users, "not_found": []}
-    if non_db_users:
-        resp["not_found"] = list(non_db_users)
-
-    return ModBan(**resp)
+    return ModBan(banned=db_users, not_found=list(non_db_users))
 
 
 @router.get("/pixel_history", response_model=t.Union[PixelHistory, Message])
@@ -99,9 +91,7 @@ async def pixel_history(
     if not record:
         return Message(message=f"No user history for pixel ({x}, {y}).")
 
-    user_id = record["user_id"]
-
-    return PixelHistory(user_id=user_id)
+    return PixelHistory(user_id=record["user_id"])
 
 
 @router.post("/webhook", response_model=Message)

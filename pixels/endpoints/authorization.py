@@ -56,12 +56,11 @@ async def auth_callback(request: Request) -> Response:
 
     This endpoint is only used as a redirect target from Discord.
     """
-    code = request.query_params["code"]
     try:
         async with AsyncClient() as client:
-            token_params, token_headers = build_oauth_token_request(code)
-            token = (await client.post(Discord.TOKEN_URL, data=token_params, headers=token_headers)).json()
-            auth_header = {"Authorization": f"Bearer {token['access_token']}"}
+            token_params, token_headers = build_oauth_token_request(request.query_params["code"])
+            auth_token = (await client.post(Discord.TOKEN_URL, data=token_params, headers=token_headers)).json()
+            auth_header = {"Authorization": f"Bearer {auth_token['access_token']}"}
             user = (await client.get(Discord.USER_URL, headers=auth_header)).json()
             token = await auth.reset_user_token(request.state.db_conn, user["id"])
     except KeyError:

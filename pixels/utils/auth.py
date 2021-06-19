@@ -16,12 +16,12 @@ class JWTBearer(HTTPBearer):
     """Dependency for routes to enforce JWT auth."""
 
     def __init__(self, auto_error: bool = True, is_mod_endpoint: bool = False):
-        super(JWTBearer, self).__init__(auto_error=auto_error)
+        super().__init__(auto_error=auto_error)
         self.is_mod_endpoint = is_mod_endpoint
 
     async def __call__(self, request: Request):
         """Check if the supplied credentials are valid for this endpoint."""
-        credentials: HTTPAuthorizationCredentials = await super(JWTBearer, self).__call__(request)
+        credentials: HTTPAuthorizationCredentials = await super().__call__(request)
         credentials = credentials.credentials
         if credentials:
             try:
