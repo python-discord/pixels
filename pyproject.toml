@@ -5,7 +5,7 @@ name = "pypi"
 
 [tool.poetry]
 name = "pixels"
-version = "1.0.0"
+version = "2.0.0"
 description = "A collaborative canvas, where users paint pixel by pixel, by POSTing coordinates and a colour code to an API."
 authors = ["Python Discord <info@pythondiscord.com>"]
 license = "MIT"
@@ -17,12 +17,13 @@ uvicorn = {extras = ["standard"], version = "~=0.14.0"}
 gunicorn = "~=20.1.0"
 fastapi = "~=0.65.2"
 python-decouple = "~=3.4"
-httpx = "~=0.18.1"
+httpx = "~=0.18.2"
 python-jose = {extras = ["cryptography"], version = "~=3.3.0"}
 jinja2 = "~=3.0.1"
 aioredis = "~=1.3.1"
 aiofiles = "~=0.7.0"
 pillow = "~=8.2.0"
+tomlkit = "~=0.7.2"
 
 [tool.poetry.dev-dependencies]
 coverage = "~=5.5"

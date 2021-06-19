@@ -2,6 +2,7 @@ import asyncio
 from urllib.parse import unquote
 
 import asyncpg
+import tomlkit
 from decouple import config
 from fastapi import Query
 from fastapi.templating import Jinja2Templates
@@ -39,6 +40,13 @@ class Discord:
 class Server:
     """General config for the pixels server."""
 
+    def _get_project_version() -> str:
+        with open("pyproject.toml") as pyproject:
+            file_contents = pyproject.read()
+
+        return tomlkit.parse(file_contents)["tool"]["poetry"]["version"]
+
+    VERSION = _get_project_version()
     BASE_URL = config("BASE_URL", default="https://pixel.pythondiscord.com")
     JWT_SECRET = config("JWT_SECRET")
     GIT_SHA = config("GIT_SHA")

@@ -43,7 +43,7 @@ def custom_openapi() -> dict[str, t.Any]:
     openapi_schema = get_openapi(
         title="Pixels API",
         description=None,
-        version="1.0.0",
+        version=Server.VERSION,
         routes=app.routes,
     )
     app.openapi_schema = openapi_schema
