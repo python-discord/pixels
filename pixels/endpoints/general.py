@@ -13,19 +13,19 @@ router = APIRouter(tags=["Canvas Endpoints"], dependencies=[Depends(auth.JWTBear
 @router.get("/size", response_model=GetSize)
 async def size(request: Request) -> GetSize:
     """
-    Get the size of the pixels canvas.
+    Get the size of the Pixels canvas.
 
     You can use the data this endpoint returns to build some cool scripts
     that can start the ducky uprising on the canvas!
 
-    This endpoint doesn't require any authentication so dont worry
-    about giving any headers.
+    This endpoint doesn't require any authentication so don't worry
+    about the headers usually required.
 
     #### Example Python Script
     ```py
     import requests
 
-    r = requests.get("https://pixels.pythondiscord.com/get_size")
+    r = requests.get("https://pixels.pythondiscord.com/size")
     payload = r.json()
 
     canvas_height = payload["height"]
@@ -57,7 +57,7 @@ async def size(request: Request) -> GetSize:
 )
 async def pixels(request: Request) -> Response:
     """
-    Get the current state of all pixels from the database.
+    Get the current state of all pixels from the canvas.
 
     This endpoint requires an authentication token.
     See [this page](https://pixels.pythondiscord.com/info/authentication)
@@ -74,15 +74,16 @@ async def pixels(request: Request) -> Response:
     token = getenv("TOKEN")
 
     headers = {"Authorization": f"Bearer {token}"}
-    r = requests.get("https://pixels.pythondiscord.com/get_pixels", headers=headers)
+    r = requests.get("https://pixels.pythondiscord.com/pixels", headers=headers)
     data = r.content
 
     # have fun processing the returned data...
     ```
     """
-    # The cast to bytes here is needed by FastAPI ¯\_(ツ)_/¯
-    return Response(bytes(await request.state.canvas.get_pixels()),
-                    media_type="application/octet-stream")
+    return Response(
+        await request.state.canvas.get_pixels(),
+        media_type="application/octet-stream"
+    )
 
 
 @router.get("/pixel", response_model=Pixel)
@@ -112,9 +113,10 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     headers = {"Authorization": f"Bearer {token}"}
 
     r = requests.get(
-        "https://pixels.pythondiscord.com/get_pixel",
+        "https://pixels.pythondiscord.com/pixel",
         headers=headers,
-        params={  # Note: we're using query string parameters to define the coordinates, not the JSON body.
+        # Note: We're using query parameters to pass the coordinates, not the request body:
+        params={
             "x": 87,
             "y": 69
         }
@@ -138,7 +140,7 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
 )
 async def put_pixel(request: Request, pixel: Pixel) -> Message:
     """
-    Override the pixel at the specified position with the specified color.
+    Override the pixel at the specified coordinate with the specified color.
 
     This endpoint requires an authentication token.
     See [this page](https://pixels.pythondiscord.com/info/authentication)
@@ -160,8 +162,10 @@ async def put_pixel(request: Request, pixel: Pixel) -> Message:
       "y": 45,
       "rgb": "00FF00"
     }
-    r = requests.post(  # remember, this is a POST method not a GET method.
-        "https://pixels.pythondiscord.com/set_pixel",
+    # Remember, this is a PUT method.
+    r = requests.put(
+        "https://pixels.pythondiscord.com/pixel",
+        # Request body this time:
         json=data,
         headers=headers,
     )
@@ -172,4 +176,4 @@ async def put_pixel(request: Request, pixel: Pixel) -> Message:
     """
     log.info(f"{request.state.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
     await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.user_id)
-    return Message(message=f"added pixel at x={pixel.x},y={pixel.y} of color {pixel.rgb}")
+    return Message(message=f"Set pixel at x={pixel.x},y={pixel.y} to color {pixel.rgb}.")

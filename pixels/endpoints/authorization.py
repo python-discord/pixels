@@ -24,7 +24,7 @@ async def authorize() -> Response:
 
 @router.get("/show_token")
 async def show_token(request: Request, token: str = Cookie(None)) -> Response:  # noqa: B008
-    """Take a token from URL and show it."""
+    """Show the token from the URL path to the user."""
     template_name = "cookie_disabled.html"
     context = {"request": request}
 

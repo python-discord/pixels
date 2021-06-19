@@ -98,5 +98,13 @@ def pixel_history(x: int, y: int) -> None:
     a.raise_for_status()
 
 
+@cli.command()
+def get_size() -> None:
+    """Gets the size of the canvas using no auth."""
+    a = requests.get(f"{base_url}/size")
+    print(f"Response:{a.text}\nHeaders:{a.headers}")
+    a.raise_for_status()
+
+
 if __name__ == "__main__":
     cli()

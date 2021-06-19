@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class JWTBearer(HTTPBearer):
-    """Dependancy for routes to enforce JWT auth."""
+    """Dependency for routes to enforce JWT auth."""
 
     def __init__(self, auto_error: bool = True, is_mod_endpoint: bool = False):
         super(JWTBearer, self).__init__(auto_error=auto_error)
@@ -57,16 +57,16 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
     is_banned = await conn.fetchval("SELECT is_banned FROM users WHERE user_id = $1", int(user_id))
     if is_banned:
         raise PermissionError
-    # 22 long string
+    # 22 character long string
     token_salt = secrets.token_urlsafe(16)
     is_mod = user_id in Server.MODS
-    async with conn.transaction():
-        await conn.execute(
-            """INSERT INTO users (user_id, key_salt, is_mod) VALUES ($1, $2, $3)
-            ON CONFLICT (user_id) DO UPDATE SET key_salt=$2;""",
-            int(user_id),
-            token_salt,
-            is_mod,
-        )
-    jwt_data = dict(id=user_id, salt=token_salt)
-    return jwt.encode(jwt_data, Server.JWT_SECRET, algorithm="HS256")
+
+    await conn.execute(
+        "INSERT INTO users (user_id, key_salt, is_mod) "
+        "VALUES ($1, $2, $3) "
+        "ON CONFLICT (user_id) DO UPDATE SET key_salt=$2",
+        int(user_id),
+        token_salt,
+        is_mod,
+    )
+    return jwt.encode({"id": user_id, "salt": token_salt}, Server.JWT_SECRET, algorithm="HS256")

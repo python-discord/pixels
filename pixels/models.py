@@ -80,7 +80,7 @@ class AuthState(enum.Enum):
     BAD_HEADER = "The Authorization header does not specify the Bearer scheme."
     INVALID_TOKEN = "The token provided is not a valid token or has expired, navigate to /authorize to get a new one."
     BANNED = "You are banned."
-    NEEDS_MODERATOR = "This endpoint is limited to moderators"
+    NEEDS_MODERATOR = "This endpoint is limited to moderators."
 
 
 class Message(BaseModel):

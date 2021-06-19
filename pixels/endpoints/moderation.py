@@ -42,13 +42,8 @@ async def set_mod(request: Request, user: User) -> Message:
         elif user_state['is_mod']:
             return Message(message=f"User with user_id {user_id} is already a mod.")
 
-        await conn.execute(
-            """
-            UPDATE users SET is_mod = true WHERE user_id = $1;
-        """,
-            user_id,
-        )
-    return Message(message=f"Successfully set user with user_id {user_id} to mod")
+        await conn.execute("UPDATE users SET is_mod = true WHERE user_id = $1", user_id)
+    return Message(message=f"Successfully set user with user_id {user_id} to mod.")
 
 
 @router.post("/mod_ban", response_model=ModBan)
@@ -102,7 +97,7 @@ async def pixel_history(
     record = await conn.fetchrow(sql, x, y)
 
     if not record:
-        return Message(message=f"No user history for pixel ({x}, {y})")
+        return Message(message=f"No user history for pixel ({x}, {y}).")
 
     user_id = record["user_id"]
 
@@ -111,7 +106,7 @@ async def pixel_history(
 
 @router.post("/webhook", response_model=Message)
 async def webhook(request: Request) -> Message:
-    """Send or update Discord webhook image."""
+    """Send or update the Discord webhook image."""
     last_message_id = await request.state.redis_pool.get("last-webhook-message")
 
     now = datetime.now()
@@ -154,17 +149,17 @@ async def webhook(request: Request) -> Message:
     )
 
     # BytesIO gives a file-like interface for saving
-    # and later this is able to get actual content what will be sent.
+    # and later this is able to get actual content that will be sent.
     file = io.BytesIO()
     await loop.run_in_executor(None, partial(image.save, file, format="PNG"))
 
-    # Name file to pixels.png
+    # Name file to pixels_TIMESTAMP.png
     files = {
         "file": (f"pixels_{now.timestamp()}.png", file.getvalue(), "image/png")
     }
 
     async with AsyncClient(timeout=None) as client:
-        # If last message exists in cache, try to edit this
+        # If the last message exists in cache, try to edit this
         if last_message_id is not None:
             data["attachments"] = []
             edit_resp = await client.patch(
@@ -177,11 +172,11 @@ async def webhook(request: Request) -> Message:
                 log.warning(f"Non 200 status code from Discord: {edit_resp.status_code}\n{edit_resp.text}")
                 last_message_id = None
 
-        # If no message is found in cache, message is missing or edit failed, create new message
+        # If no message is found in cache, the message is missing or the edit failed, send a new message
         if last_message_id is None:
-            # If we are sending new message, don't specify attachments
+            # If we are sending new a message, don't specify attachments
             data.pop("attachments", None)
-            # Username can be only set on sending
+            # Username can only be set when sending a new message
             data["username"] = "Pixels"
             create_resp = (await client.post(
                 Discord.WEBHOOK_URL,
