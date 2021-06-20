@@ -122,7 +122,7 @@ async def webhook(request: Request) -> Message:
         )
     )
 
-    # Increase size of image so this looks better in Discord
+    # Increase size of image so that this looks better in Discord
     image = await loop.run_in_executor(
         None,
         partial(
