@@ -137,7 +137,8 @@ class Canvas:
 
     async def get_pixels(self) -> bytes:
         """Returns the whole board."""
-        return bytes(await self.redis.get(f"{Server.GIT_SHA}-canvas-cache"))
+        canvas = await self.redis.get(f"{Server.GIT_SHA}-canvas-cache")
+        return bytes(canvas) if canvas else None
 
     async def get_pixel(self, x: int, y: int) -> bytearray:
         """Returns a single pixel from the board."""
