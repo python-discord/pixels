@@ -7,6 +7,7 @@ from datetime import datetime
 from functools import partial
 
 from PIL import Image
+from asyncpg import Connection
 from fastapi import APIRouter, Depends, Request, Response
 from httpx import AsyncClient
 
@@ -32,7 +33,7 @@ async def mod_check(request: Request) -> Message:
 async def set_mod(request: Request, user: User) -> Message:
     """Make another user a mod."""
     user_id = user.user_id
-    conn = request.state.db_conn
+    conn: Connection = request.state.db_conn
     async with conn.transaction():
         user_state = await conn.fetchrow("SELECT is_mod FROM users WHERE user_id = $1", user_id)
         if user_state is None:
@@ -47,7 +48,7 @@ async def set_mod(request: Request, user: User) -> Message:
 @router.post("/mod_ban", response_model=ModBan)
 async def ban_users(request: Request, user_list: list[User]) -> ModBan:
     """Ban users from using the API."""
-    conn = request.state.db_conn
+    conn: Connection = request.state.db_conn
     users = [user.user_id for user in user_list]
 
     records = await conn.fetch("SELECT * FROM users WHERE user_id=any($1::bigint[])", tuple(users))
@@ -55,10 +56,12 @@ async def ban_users(request: Request, user_list: list[User]) -> ModBan:
 
     non_db_users = set(users) - set(db_users)
 
-    # Ref:
-    # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
-    await conn.execute("UPDATE users SET is_banned=TRUE WHERE user_id=any($1::bigint[])", db_users)
-    await conn.execute("UPDATE pixel_history SET deleted=TRUE WHERE user_id=any($1::bigint[])", db_users)
+    async with conn.transaction():
+        # Ref:
+        # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
+        await conn.execute("UPDATE users SET is_banned=TRUE WHERE user_id=any($1::bigint[])", db_users)
+        await conn.execute("UPDATE pixel_history SET deleted=TRUE WHERE user_id=any($1::bigint[])", db_users)
+
     await request.state.canvas.sync_cache(conn, skip_check=True)
 
     return ModBan(banned=db_users, not_found=list(non_db_users))
