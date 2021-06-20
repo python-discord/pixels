@@ -45,10 +45,12 @@ def set_to_mod(user_id: int) -> dict:
 @cli.command()
 def show_image() -> None:
     """Gets the current image it displays it on screen."""
-    a = requests.get(f"{base_url}/get_pixels", headers=HEADERS)
+    size = requests.get(f"{base_url}/size", headers=HEADERS).json()
+    h, w = size["height"], size["width"]
+    a = requests.get(f"{base_url}/pixels", headers=HEADERS)
     print(f"Response:{a.text}\nHeaders:{a.headers}")
     a.raise_for_status()
-    Image.frombytes('RGB', (160, 90), a.content).save('2.png')
+    Image.frombytes('RGB', (w, h), a.content).save('2.png')
 
 
 @cli.command()
@@ -66,8 +68,8 @@ def set_pixel(x: int, y: int) -> None:
     """Sets the coordinate to a random colour."""
     [r, g, b] = [math.ceil(x * 255) for x in colorsys.hsv_to_rgb(random.random() * 0.089, 0.8, 1)]
 
-    a = requests.post(
-        f"{base_url}/set_pixel",
+    a = requests.put(
+        f"{base_url}/pixel",
         json={
             "x": x,
             "y": y,
@@ -92,6 +94,14 @@ def pixel_history(x: int, y: int) -> None:
         },
         headers=HEADERS
     )
+    print(f"Response:{a.text}\nHeaders:{a.headers}")
+    a.raise_for_status()
+
+
+@cli.command()
+def get_size() -> None:
+    """Gets the size of the canvas using no auth."""
+    a = requests.get(f"{base_url}/size")
     print(f"Response:{a.text}\nHeaders:{a.headers}")
     a.raise_for_status()
 

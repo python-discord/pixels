@@ -1,19 +1,22 @@
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.8-slim
+FROM python:3.9.5-slim
 
-# Set pip to have cleaner logs and no saved cache
+# Set pip to have no saved cache
 ENV PIP_NO_CACHE_DIR=false \
-    PIPENV_HIDE_EMOJIS=1 \
-    PIPENV_IGNORE_VIRTUALENVS=1 \
-    PIPENV_NOSPIN=1 \
-    MODULE_NAME="pixels" \
+    POETRY_VIRTUALENVS_CREATE=false \
     MAX_WORKERS=10
 
-# Install pipenv
-RUN pip install -U pipenv
+# Install poetry
+RUN pip install -U poetry
+
+# Create the working directory
+WORKDIR /pixels
 
 # Install project dependencies
-COPY Pipfile* ./
-RUN pipenv install --system --deploy
+COPY pyproject.toml poetry.lock ./
+RUN poetry install --no-dev
+
+# Copy in the Gunicorn config
+COPY ./gunicorn_conf.py /gunicorn_conf.py
 
 # Define Git SHA build argument
 ARG git_sha="development"
@@ -22,4 +25,10 @@ ARG git_sha="development"
 ENV GIT_SHA=$git_sha
 
 # Copy the source code in last to optimize rebuilding the image
-COPY . /app
+COPY . .
+
+EXPOSE 80
+
+# Run the start script, it will check for an /app/prestart.sh script (e.g. for migrations),
+# and then it will start Gunicorn with Uvicorn workers.
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-c", "/gunicorn_conf.py", "pixels:app"]

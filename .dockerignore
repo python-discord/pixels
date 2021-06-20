@@ -1,16 +1,10 @@
-.venv
-scripts
-htmlcov
-__pycache__
-.vagrant
-.pytest_cache
-.github
-.gitlab
-.cache
-Vagrantfile
-.coverage
-.coveragerc
-.gitignore
-.travis.yml
-*.log
-docker
+# Exclude everything
+*
+
+# Make exceptions for what's needed
+!pixels
+!postgres
+!pyproject.toml
+!poetry.lock
+!gunicorn_conf.py
+!LICENSE

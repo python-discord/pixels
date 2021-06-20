@@ -5,7 +5,7 @@ from time import time
 from aioredis import Redis
 from asyncpg import Connection
 
-from pixels import constants
+from pixels.constants import Server, Sizes
 
 log = logging.getLogger(__name__)
 
@@ -29,31 +29,30 @@ class Canvas:
         """
         # We try to set the lock but use a self join to return the previous state.
         previous_record, = await conn.fetch(
-            """UPDATE cache_state x
-            SET sync_lock = now()
-            FROM (SELECT sync_lock FROM cache_state FOR UPDATE) y
-            RETURNING y.sync_lock AS previous_state
-            """)
+            "UPDATE cache_state x "
+            "SET sync_lock = now() "
+            "FROM ( "
+            "   SELECT sync_lock FROM cache_state "
+            "   FOR UPDATE "
+            ") y "
+            "RETURNING y.sync_lock AS previous_state"
+        )
         return previous_record["previous_state"] is None
 
     async def _populate_cache(self, conn: Connection) -> None:
         """Populate the cache and discard old values."""
         start_time = time()
 
-        cache = bytearray(constants.width * constants.height * 3)
+        cache = bytearray(Sizes.WIDTH * Sizes.HEIGHT * 3)
 
-        sql = (
-            "SELECT x, y, rgb "
-            "FROM current_pixel "
-            "WHERE x < $1 "
-            "AND y < $2"
-        )
-        records = await conn.fetch(sql, constants.width, constants.height)
+        sql = "SELECT x, y, rgb FROM current_pixel WHERE x < $1 AND y < $2"
+
+        records = await conn.fetch(sql, Sizes.WIDTH, Sizes.HEIGHT)
         for record in records:
-            position = record["y"] * constants.width + record["x"]
+            position = record["y"] * Sizes.WIDTH + record["x"]
             cache[position * 3:(position + 1) * 3] = bytes.fromhex(record["rgb"])
 
-        await self.redis.set(f"{constants.git_sha}-canvas-cache", cache)
+        await self.redis.set(f"{Server.GIT_SHA}-canvas-cache", cache)
 
         log.info(f"Cache updated finished! (took {time() - start_time}s)")
         await conn.execute("UPDATE cache_state SET last_synced = now()")
@@ -61,7 +60,7 @@ class Canvas:
     async def is_cache_out_of_date(self, conn: Connection) -> bool:
         """Return true if the cache can be considered out of date."""
         cache = await self.get_pixels()
-        if not cache or len(cache)//3 != constants.width*constants.height:
+        if not cache or len(cache)//3 != Sizes.WIDTH*Sizes.HEIGHT:
             # Canvas size has changed, force a cache refresh
             return True
 
@@ -102,9 +101,8 @@ class Canvas:
                     # If it has been too long since the lock has been set
                     # we consider it as deadlocked and clear it
                     result = await conn.execute(
-                        f"""UPDATE cache_state
-                        SET sync_lock = now()
-                        WHERE now() - sync_lock > interval '{KEY_TIMEOUT} seconds'"""
+                        "UPDATE cache_state SET sync_lock = now() "
+                        f"WHERE now() - sync_lock > interval '{KEY_TIMEOUT} seconds'"
                     )
                     if result.split()[1] == "1":
                         log.warning("Lock considered as deadlocked. Clearing it.")
@@ -123,9 +121,8 @@ class Canvas:
         async with conn.transaction():
             # Insert the pixel into the database
             await conn.execute(
-                """
-                INSERT INTO pixel_history (x, y, rgb, user_id, deleted) VALUES ($1, $2, $3, $4, false);
-            """,
+                "INSERT INTO pixel_history (x, y, rgb, user_id, deleted) "
+                "VALUES ($1, $2, $3, $4, false)",
                 x,
                 y,
                 rgb,
@@ -133,16 +130,16 @@ class Canvas:
             )
 
             # Update the cache
-            position = (y * constants.width + x) * 3
-            await self.redis.setrange(f"{constants.git_sha}-canvas-cache", position, bytes.fromhex(rgb))
+            position = (y * Sizes.WIDTH + x) * 3
+            await self.redis.setrange(f"{Server.GIT_SHA}-canvas-cache", position, bytes.fromhex(rgb))
 
             await conn.execute("UPDATE cache_state SET last_synced = now()")
 
-    async def get_pixels(self) -> bytearray:
+    async def get_pixels(self) -> bytes:
         """Returns the whole board."""
-        return await self.redis.get(f"{constants.git_sha}-canvas-cache")
+        return bytes(await self.redis.get(f"{Server.GIT_SHA}-canvas-cache"))
 
     async def get_pixel(self, x: int, y: int) -> bytearray:
         """Returns a single pixel from the board."""
-        position = (y * constants.width + x) * 3
-        return await self.redis.getrange(f"{constants.git_sha}-canvas-cache", position, position+2)
+        position = (y * Sizes.WIDTH + x) * 3
+        return await self.redis.getrange(f"{Server.GIT_SHA}-canvas-cache", position, position+2)

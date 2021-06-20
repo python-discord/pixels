@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import functools
 import hashlib
@@ -14,13 +12,16 @@ from time import time
 
 import fastapi
 from aioredis import Redis
-from fastapi import requests
+from fastapi import APIRouter, Depends, requests
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
-from pixels import constants
+from pixels.constants import Connections
+from pixels.utils import auth
 
 log = logging.getLogger(__name__)
+
+router = APIRouter(dependencies=[Depends(auth.JWTBearer())])
 
 
 class __BucketBase:
@@ -73,7 +74,7 @@ class __BucketBase:
 
         # Bucket Params
         self.ROUTE_NAME: typing.Optional[str] = None
-        self.ROUTES: typing.List[str] = []
+        self.ROUTES: list[str] = []
         self.BYPASS = bypass
 
         _limits_type = namedtuple("LIMITS", "requests, time_unit, cooldown")
@@ -97,8 +98,6 @@ class __BucketBase:
 
     def __call__(self, *args):
         """Wrap the route in a custom caller, and pass it to the route manager."""
-        from pixels.pixels import app  # Local import to avoid circular dependencies
-
         route_callback: typing.Callable = args[0]
         if not isinstance(route_callback, typing.Callable):
             raise Exception("First parameter of rate limiter must be a function.")
@@ -109,7 +108,7 @@ class __BucketBase:
             self.ROUTE_NAME = "|".join(self.ROUTES)
 
         # Add an HEAD endpoint to get rate limit details
-        @app.head("/" + route_callback.__name__)
+        @router.head("/" + route_callback.__name__, name=f"{route_callback.__name__} rate limit")
         async def head_endpoint(request: requests.Request) -> Response:
             response = Response()
 
@@ -255,26 +254,24 @@ class UserRedis(__BucketBase):
     @dataclass
     class _StateVariables:
         remaining_requests: typing.Optional[int]
-        clean_up_tasks: typing.List[typing.Callable]
+        clean_up_tasks: list[typing.Callable]
         user_id: int
 
-    state: typing.Dict[int, _StateVariables]
+    state: dict[int, _StateVariables]
 
     redis: typing.Optional[Redis] = None
 
     async def _pre_call(self, _request_id: int, request: fastapi.Request, *args, **kwargs) -> None:
-        request.state.auth.raise_if_failed()
-
         if not self.redis:
             try:
-                self.redis = await constants.REDIS_FUTURE
+                self.redis = await Connections.REDIS_FUTURE
             except asyncio.InvalidStateError:
                 raise ValueError("Redis connection isn't ready yet.")
 
     async def _init_state(self, request_id: int, request: fastapi.Request) -> None:
         self.state.update({
             request_id: self._StateVariables(
-                remaining_requests=None, clean_up_tasks=[], user_id=request.state.auth.user_id
+                remaining_requests=None, clean_up_tasks=[], user_id=request.state.user_id
             )
         })
 
