@@ -117,7 +117,7 @@ async def webhook(request: Request) -> Message:
             Image.frombytes,
             "RGB",
             (Sizes.WIDTH, Sizes.HEIGHT),
-            bytes(await request.state.canvas.get_pixels())
+            await request.state.canvas.get_pixels()
         )
     )
 
