@@ -58,9 +58,7 @@ async def ban_users(request: Request, user_list: list[User]) -> ModBan:
     # Ref:
     # https://magicstack.github.io/asyncpg/current/faq.html#why-do-i-get-postgressyntaxerror-when-using-expression-in-1
     await conn.execute("UPDATE users SET is_banned=TRUE WHERE user_id=any($1::bigint[])", db_users)
-
     await conn.execute("UPDATE pixel_history SET deleted=TRUE WHERE user_id=any($1::bigint[])", db_users)
-
     await request.state.canvas.sync_cache(conn, skip_check=True)
 
     return ModBan(banned=db_users, not_found=list(non_db_users))
@@ -142,7 +140,7 @@ async def webhook(request: Request) -> Message:
     }
 
     async with AsyncClient(timeout=None) as client:
-        # If the last message exists in cache, try to edit this
+        # If the last message exists in cache, try to edit it
         if last_message_id is not None:
             data["attachments"] = []
             edit_resp = await client.patch(
@@ -157,7 +155,7 @@ async def webhook(request: Request) -> Message:
 
         # If no message is found in cache, the message is missing or the edit failed, send a new message
         if last_message_id is None:
-            # If we are sending new a message, don't specify attachments
+            # If we are sending a new message, don't specify attachments
             data.pop("attachments", None)
             # Username can only be set when sending a new message
             data["username"] = "Pixels"

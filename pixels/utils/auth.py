@@ -31,8 +31,8 @@ class JWTBearer(HTTPBearer):
         except JWTError:
             raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
 
-        user_id = token_data["id"]
-        token_salt = token_data["salt"]
+        user_id, token_salt = token_data["id"], token_data["salt"]
+
         user_state = await request.state.db_conn.fetchrow(
             "SELECT is_banned, is_mod, key_salt FROM users WHERE user_id = $1",
             int(user_id)
