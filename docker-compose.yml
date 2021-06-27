@@ -24,7 +24,6 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./logs:/pixels/logs
       - .:/pixels:ro
     tty: true
     depends_on:
