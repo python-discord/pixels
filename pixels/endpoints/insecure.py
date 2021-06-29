@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 router = APIRouter(tags=["Canvas Endpoints"])
 
 
-@router.get("/size", response_model=GetSize)
+@router.get("/canvas/size", response_model=GetSize)
 async def size(request: Request) -> GetSize:
     """
     Get the size of the Pixels canvas.

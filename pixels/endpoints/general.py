@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 router = APIRouter(tags=["Canvas Endpoints"], dependencies=[Depends(auth.JWTBearer())])
 
 
-@router.get("/pixels", response_class=Response, responses={
+@router.get("/canvas/pixels", response_class=Response, responses={
     200: {
         "description": "Successful Response.",
         "content": {
@@ -28,7 +28,7 @@ router = APIRouter(tags=["Canvas Endpoints"], dependencies=[Depends(auth.JWTBear
     time_unit=Ratelimits.GET_PIXELS_RATE_LIMIT,
     cooldown=Ratelimits.GET_PIXELS_RATE_COOLDOWN
 )
-async def pixels(request: Request) -> Response:
+async def canvas_pixels(request: Request) -> Response:
     """
     Get the current state of all pixels from the canvas.
 
@@ -59,7 +59,7 @@ async def pixels(request: Request) -> Response:
     )
 
 
-@router.get("/pixel", response_model=Pixel)
+@router.get("/canvas/pixel", response_model=Pixel)
 @ratelimits.UserRedis(
     requests=Ratelimits.GET_PIXEL_AMOUNT,
     time_unit=Ratelimits.GET_PIXEL_RATE_LIMIT,
@@ -105,7 +105,7 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     return Pixel(x=x, y=y, rgb=''.join(f"{x:02x}" for x in pixel_data))
 
 
-@router.put("/pixel", response_model=Message)
+@router.put("/canvas/pixel", response_model=Message)
 @ratelimits.UserRedis(
     requests=Ratelimits.PUT_PIXEL_AMOUNT,
     time_unit=Ratelimits.PUT_PIXEL_RATE_LIMIT,
