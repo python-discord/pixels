@@ -8,6 +8,7 @@ services:
       POSTGRES_PASSWORD: pypixels
       POSTGRES_USER: pypixels
     volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./postgres:/scripts
     ports:
       - "127.0.0.1:5000:5432"
