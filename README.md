@@ -37,7 +37,7 @@ CLIENT_SECRET=<Discord app client secret>
 # Add the redirect BASE_URL/callback to your application, then generate an OAuth2 URL with scopes: identify.
 AUTH_URL=<Discord OAuth2 URL>
 # The webhook to periodically post the canvas state to
-WEBHOOK_URL=<Discord Webhook URL> 
+WEBHOOK_URL=<Discord Webhook URL>
 # Where the root endpoint can be found.
 BASE_URL=http://localhost:8000
 # 32 byte (64 digit hex string) secret for encoding tokens. Any value can be used.
