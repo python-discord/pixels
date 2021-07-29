@@ -77,8 +77,15 @@ class AuthState(enum.Enum):
         "There is no token provided, provide one in an Authorization header in the format 'Bearer {your token here}'"
         "or navigate to /authorize to get one"
     )
-    BAD_HEADER = "The Authorization header does not specify the Bearer scheme."
-    INVALID_TOKEN = "The token provided is not a valid token or has expired, navigate to /authorize to get a new one."
+    WRONG_TOKEN = (
+        "The token provided is not the access token, make a POST request to /authenticate. "
+        "Refer to the documentation for more information."
+    )
+    BAD_HEADER = "The Authorization header does not specify the correct scheme."
+    INVALID_TOKEN = (
+        "The token provided is not a valid token or has expired, navigate to /authorize to get a refresh token "
+        "or make a POST request to /authenticate to get a new access token."
+    )
     BANNED = "You are banned."
     NEEDS_MODERATOR = "This endpoint is limited to moderators."
 
@@ -107,3 +114,18 @@ class GetSize(BaseModel):
 
     width: int
     height: int
+
+
+class RefreshToken(BaseModel):
+    """Expected body for requesting a new access token."""
+
+    refresh_token: str
+
+
+class AccessToken(RefreshToken):
+    """Response for requesting a new access token."""
+
+    access_token: str
+    token_type: str
+    expires_in: int
+    refresh_token: str
