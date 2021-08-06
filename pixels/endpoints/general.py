@@ -10,7 +10,8 @@ log = logging.getLogger(__name__)
 
 # By only adding the JWT dependency to the submounted router we can have size() be un-authenticated
 router = APIRouter(prefix="/canvas", tags=["Canvas Endpoints"])
-secure = APIRouter(dependencies=[Depends(auth.JWTBearer())])  # We include this at the bottom
+# We include this at the bottom
+secure = APIRouter(dependencies=[Depends(auth.JWTBearer())], tags=["Canvas Endpoints"])
 
 
 @router.get("/size", response_model=GetSize)
