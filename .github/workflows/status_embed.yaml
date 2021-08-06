@@ -22,6 +22,7 @@ jobs:
     # - Always run for non-success workflows, as they
     #   terminate the workflow sequence.
     if: >-
+      (github.event.workflow_run.name == 'Lint' && github.event.workflow_run.conclusion != 'skipped') ||
       (github.event.workflow_run.name == 'Build' && github.event.workflow_run.conclusion != 'skipped') ||
       github.event.workflow_run.event == 'pull_request' ||
       github.event.workflow_run.conclusion == 'failure' ||
