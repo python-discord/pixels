@@ -12,7 +12,7 @@ from starlette.responses import RedirectResponse
 
 from pixels.canvas import Canvas
 from pixels.constants import Connections, Server
-from pixels.endpoints import authorization, general, insecure, moderation
+from pixels.endpoints import authorization, general, moderation
 from pixels.utils import ratelimits
 
 log = logging.getLogger(__name__)
@@ -24,7 +24,6 @@ app = FastAPI(
 
 app.include_router(authorization.router)
 app.include_router(general.router)
-app.include_router(insecure.router)
 app.include_router(moderation.router)
 app.include_router(ratelimits.router)
 

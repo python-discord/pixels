@@ -3,14 +3,45 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from pixels.constants import Ratelimits, Sizes
-from pixels.models import Message, Pixel
+from pixels.models import GetSize, Message, Pixel
 from pixels.utils import auth, ratelimits
 
 log = logging.getLogger(__name__)
-router = APIRouter(tags=["Canvas Endpoints"], dependencies=[Depends(auth.JWTBearer())])
+
+# By only adding the JWT dependency to the submounted router we can have size() be un-authenticated
+router = APIRouter(prefix="/canvas", tags=["Canvas Endpoints"])
+# We include this at the bottom
+secure = APIRouter(dependencies=[Depends(auth.JWTBearer())])
 
 
-@router.get("/pixels", response_class=Response, responses={
+@router.get("/size", response_model=GetSize)
+async def size() -> GetSize:
+    """
+    Get the size of the Pixels canvas.
+
+    You can use the data this endpoint returns to build some cool scripts
+    that can start the ducky uprising on the canvas!
+
+    This endpoint doesn't require any authentication so don't worry
+    about the headers usually required.
+
+    #### Example Python Script
+    ```py
+    import requests
+
+    r = requests.get("https://pixels.pythondiscord.com/size")
+    payload = r.json()
+
+    canvas_height = payload["height"]
+    canvas_width = payload["width"]
+
+    print(f"We got our canvas size! Height: {canvas_height}, Width: {canvas_width}.")
+    ```
+    """
+    return GetSize(width=Sizes.WIDTH, height=Sizes.HEIGHT)
+
+
+@secure.get("/pixels", response_class=Response, responses={
     200: {
         "description": "Successful Response.",
         "content": {
@@ -28,7 +59,7 @@ router = APIRouter(tags=["Canvas Endpoints"], dependencies=[Depends(auth.JWTBear
     time_unit=Ratelimits.GET_PIXELS_RATE_LIMIT,
     cooldown=Ratelimits.GET_PIXELS_RATE_COOLDOWN
 )
-async def pixels(request: Request) -> Response:
+async def canvas_pixels(request: Request) -> Response:
     """
     Get the current state of all pixels from the canvas.
 
@@ -59,7 +90,7 @@ async def pixels(request: Request) -> Response:
     )
 
 
-@router.get("/pixel", response_model=Pixel)
+@secure.get("/pixel", response_model=Pixel)
 @ratelimits.UserRedis(
     requests=Ratelimits.GET_PIXEL_AMOUNT,
     time_unit=Ratelimits.GET_PIXEL_RATE_LIMIT,
@@ -105,7 +136,7 @@ async def get_pixel(x: int, y: int, request: Request) -> Pixel:
     return Pixel(x=x, y=y, rgb=''.join(f"{x:02x}" for x in pixel_data))
 
 
-@router.put("/pixel", response_model=Message)
+@secure.put("/pixel", response_model=Message)
 @ratelimits.UserRedis(
     requests=Ratelimits.PUT_PIXEL_AMOUNT,
     time_unit=Ratelimits.PUT_PIXEL_RATE_LIMIT,
@@ -150,3 +181,5 @@ async def put_pixel(request: Request, pixel: Pixel) -> Message:
     log.info(f"{request.state.user_id} is setting {pixel.x}, {pixel.y} to {pixel.rgb}")
     await request.state.canvas.set_pixel(request.state.db_conn, pixel.x, pixel.y, pixel.rgb, request.state.user_id)
     return Message(message=f"Set pixel at x={pixel.x},y={pixel.y} to color {pixel.rgb}.")
+
+router.include_router(secure)
