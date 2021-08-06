@@ -37,6 +37,12 @@ class Discord:
     API_BASE = "https://discord.com/api/v8"
 
 
+class Authorization:
+    """Configuration regarding the access token authorization."""
+
+    EXPIRES_IN = 3600
+
+
 class Server:
     """General config for the pixels server."""
 

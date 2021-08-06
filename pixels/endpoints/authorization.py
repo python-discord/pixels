@@ -5,7 +5,8 @@ from fastapi import APIRouter, Cookie, HTTPException, Request, Response
 from httpx import AsyncClient
 from starlette.responses import RedirectResponse
 
-from pixels.constants import Discord, Server
+from pixels.constants import Authorization, Discord, Server
+from pixels.models import AccessToken, RefreshToken
 from pixels.utils import auth
 
 log = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ async def authorize() -> Response:
 
 @router.get("/show_token")
 async def show_token(request: Request, token: str = Cookie(None)) -> Response:  # noqa: B008
-    """Show the token from the URL path to the user."""
+    """Show the refresh token from the URL path to the user."""
     template_name = "cookie_disabled.html"
     context = {"request": request}
 
@@ -52,7 +53,7 @@ def build_oauth_token_request(code: str) -> tuple[dict, dict]:
 @router.get("/callback")
 async def auth_callback(request: Request) -> Response:
     """
-    Create the user given the authorization code and output the token.
+    Create the user given the authorization code and output the refresh token.
 
     This endpoint is only used as a redirect target from Discord.
     """
@@ -80,3 +81,19 @@ async def auth_callback(request: Request) -> Response:
         path='/show_token',
     )
     return redirect
+
+
+@router.post("/authenticate", response_model=AccessToken)
+async def authenticate(request: Request, body: RefreshToken) -> dict:
+    """
+    Authenticate and request an access token.
+
+    Users should replace their local refresh token with the one returned.
+    """
+    return {
+        "access_token": await auth.generate_access_token(request.state.db_conn, body.refresh_token),
+        "token_type": "Bearer",
+        "expires_in": Authorization.EXPIRES_IN,
+        # In the future we may use this so that we can regenerate refresh tokens every once in a while
+        "refresh_token": body.refresh_token,
+    }
