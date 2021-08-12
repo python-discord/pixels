@@ -99,6 +99,9 @@ async def generate_access_token(conn: Connection, refresh_token: str) -> str:
     except JWTError:
         raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
 
+    if token_data["grant_type"] != "refresh_token":
+        raise HTTPException(status_code=403, detail=AuthState.WRONG_TOKEN.value)
+
     is_banned, key_salt = await conn.fetchrow(
         "SELECT is_banned, key_salt FROM users WHERE user_id = $1", int(token_data["id"])
     )
