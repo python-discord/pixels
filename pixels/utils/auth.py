@@ -79,7 +79,7 @@ async def reset_user_token(conn: Connection, user_id: str) -> str:
     return jwt.encode(
         {
             "id": user_id,
-            "grant_type": "authorization_code",
+            "grant_type": "refresh_token",
             "salt": token_salt
         },
         Server.JWT_SECRET,
@@ -111,7 +111,7 @@ async def generate_access_token(conn: Connection, refresh_token: str) -> str:
     return jwt.encode(
         {
             "id": token_data["id"],
-            "grant_type": "refresh_token",
+            "grant_type": "access_token",
             "expiration": expiration.timestamp(),
             "salt": key_salt
         },
