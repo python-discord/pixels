@@ -40,7 +40,7 @@ class JWTBearer(HTTPBearer):
         # Handle bad scenarios
 
         if token_data["grant_type"] != "access_token":
-            raise HTTPException(status_code=403, detail=AuthState.WRONG_TOKEN)
+            raise HTTPException(status_code=403, detail=AuthState.WRONG_TOKEN.value)
 
         expired = int(token_data["expiration"]) < datetime.now(timezone.utc).timestamp()
         if user_state is None or user_state["key_salt"] != token_data["salt"] or expired:
