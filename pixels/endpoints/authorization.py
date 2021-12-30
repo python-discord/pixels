@@ -63,7 +63,7 @@ async def auth_callback(request: Request) -> Response:
             auth_token = (await client.post(Discord.TOKEN_URL, data=token_params, headers=token_headers)).json()
             auth_header = {"Authorization": f"Bearer {auth_token['access_token']}"}
             user = (await client.get(Discord.USER_URL, headers=auth_header)).json()
-            token = await auth.reset_user_token(request.state.db_conn, user["id"])
+            token, _ = await auth.reset_user_token(request.state.db_conn, user["id"])
     except KeyError:
         # Ensure that users don't land on the show_pixel page
         log.error(traceback.format_exc())
@@ -90,10 +90,11 @@ async def authenticate(request: Request, body: RefreshToken) -> dict:
 
     Users should replace their local refresh token with the one returned.
     """
+    access, refresh = await auth.generate_access_token(request.state.db_conn, body.refresh_token)
     return {
-        "access_token": await auth.generate_access_token(request.state.db_conn, body.refresh_token),
+        "access_token": access,
         "token_type": "Bearer",
-        "expires_in": Authorization.EXPIRES_IN,
+        "expires_in": Authorization.ACCESS_EXPIRES_IN,
         # In the future we may use this so that we can regenerate refresh tokens every once in a while
-        "refresh_token": body.refresh_token,
+        "refresh_token": refresh,
     }

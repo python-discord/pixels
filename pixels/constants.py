@@ -38,9 +38,10 @@ class Discord:
 
 
 class Authorization:
-    """Configuration regarding the access token authorization."""
+    """Configuration regarding the token authorization."""
 
-    EXPIRES_IN = 3600
+    ACCESS_EXPIRES_IN = 3600
+    REFRESH_EXPIRES_IN = ACCESS_EXPIRES_IN * 6  # 6 access token lifetimes
 
 
 class Server:
