@@ -39,11 +39,12 @@ class JWTBearer(HTTPBearer):
 
         # Handle bad scenarios
 
+        if token_data["grant_type"] != "access_token":
+            raise HTTPException(status_code=403, detail=AuthState.WRONG_TOKEN.value)
+
         expired = int(token_data["expiration"]) < datetime.now(timezone.utc).timestamp()
         if user_state is None or user_state["key_salt"] != token_data["salt"] or expired:
             raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
-        elif token_data["grant_type"] != "refresh_token":
-            raise HTTPException(status_code=403, detail=AuthState.WRONG_TOKEN)
         elif user_state["is_banned"]:
             raise HTTPException(status_code=403, detail=AuthState.BANNED.value)
         elif self.is_mod_endpoint and not user_state["is_mod"]:
@@ -88,12 +89,12 @@ async def reset_user_token(conn: Connection, user_id: str) -> tuple[str, Record]
     token = jwt.encode(
         {
             "id": user_id,
-            "grant_type": "authorization_code",
+            "grant_type": "refresh_token",
             "expiration": expiration.timestamp(),
-            "salt": token_salt
+            "salt": token_salt,
         },
         Server.JWT_SECRET,
-        algorithm="HS256"
+        algorithm="HS256",
     )
     return token, row
 
@@ -114,9 +115,13 @@ async def generate_access_token(conn: Connection, refresh_token: str) -> tuple[s
     except JWTError:
         raise HTTPException(status_code=403, detail=AuthState.INVALID_TOKEN.value)
 
+    if token_data["grant_type"] != "refresh_token":
+        raise HTTPException(status_code=403, detail=AuthState.WRONG_TOKEN.value)
+
     row = await conn.fetchrow(
         "SELECT is_banned, user_id, key_salt FROM users WHERE user_id = $1", int(token_data["id"])
     )
+
     if row['is_banned']:
         raise PermissionError
     elif row['key_salt'] != token_data["salt"]:
@@ -130,7 +135,7 @@ async def generate_access_token(conn: Connection, refresh_token: str) -> tuple[s
     token = jwt.encode(
         {
             "id": token_data["id"],
-            "grant_type": "refresh_token",
+            "grant_type": "access_token",
             "expiration": expiration.timestamp(),
             "salt": row['key_salt']
         },
