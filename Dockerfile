@@ -1,19 +1,13 @@
-FROM --platform=linux/amd64 python:3.9-slim
+FROM --platform=linux/amd64 ghcr.io/chrislovering/python-poetry-base:3.9-slim
 
-# Set pip to have no saved cache
-ENV PIP_NO_CACHE_DIR=false \
-    POETRY_VIRTUALENVS_CREATE=false \
-    MAX_WORKERS=10
-
-# Install poetry
-RUN pip install -U poetry
+ENV MAX_WORKERS=10
 
 # Create the working directory
 WORKDIR /pixels
 
 # Install project dependencies
 COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-dev
+RUN poetry install --without dev
 
 # Copy in the Gunicorn config
 COPY ./gunicorn_conf.py /gunicorn_conf.py
@@ -31,4 +25,5 @@ EXPOSE 80
 
 # Run the start script, it will check for an /app/prestart.sh script (e.g. for migrations),
 # and then it will start Gunicorn with Uvicorn workers.
+ENTRYPOINT ["poetry", "run"]
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-c", "/gunicorn_conf.py", "pixels:app"]
